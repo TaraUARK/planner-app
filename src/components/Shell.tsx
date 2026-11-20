@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import type { Account } from '../lib/account';
 import { dayLabel, monthLabel, shiftDate, todayISO, weekLabel } from '../lib/dates';
-import { useLayout, useRoute, type Route, type View } from '../lib/hooks';
+import { useLayout, useRoute, useToday, type Route, type View } from '../lib/hooks';
 import { DayView } from '../views/DayView';
 import { MonthView } from '../views/MonthView';
 import { NotesView } from '../views/NotesView';
+import { ProjectsView } from '../views/ProjectsView';
 import { SettingsView } from '../views/SettingsView';
 import { WeekView } from '../views/WeekView';
+import { EditorProvider, useEditor } from './Editor';
 import { ChevronLeft, ChevronRight, DayIcon, GearIcon, MonthIcon, NotesIcon, WeekIcon } from './Icons';
 import { SyncBadge } from './SyncBadge';
 import { UpdateBanner } from './UpdateBanner';
@@ -30,15 +32,29 @@ function title(r: Route): string {
       return 'Notes';
     case 'settings':
       return 'Settings';
+    case 'projects':
+      return 'Projects';
   }
 }
 
 export function Shell({ account }: { account: Account }) {
+  return (
+    <EditorProvider>
+      <Frame account={account} />
+    </EditorProvider>
+  );
+}
+
+function Frame({ account }: { account: Account }) {
   const layout = useLayout();
   const [route, go] = useRoute();
+  const today = useToday();
+  const editor = useEditor();
   const hasPeriod = route.view === 'month' || route.view === 'week' || route.view === 'day';
   const step = (n: number) =>
     go({ view: route.view, date: shiftDate(route.date, route.view as 'month' | 'week' | 'day', n) });
+  // New items default to the day being looked at in the Daily view, otherwise today.
+  const addDate = route.view === 'day' ? route.date : today;
 
   const tabs = TABS.map((t) => (
     <button
@@ -51,50 +67,76 @@ export function Shell({ account }: { account: Account }) {
     </button>
   ));
 
+  const periodNav = hasPeriod && (
+    <div className="period-nav">
+      <button className="icon" aria-label="Previous" onClick={() => step(-1)}>
+        <ChevronLeft />
+      </button>
+      <button className="today-btn" onClick={() => go({ view: route.view, date: todayISO() })}>
+        Today
+      </button>
+      <button className="icon" aria-label="Next" onClick={() => step(1)}>
+        <ChevronRight />
+      </button>
+    </div>
+  );
+
+  const addButtons = (
+    <div className="add-buttons">
+      <button onClick={() => editor.addTask(addDate)}>+ Task</button>
+      <button onClick={() => editor.addAppointment(addDate)}>+ Appointment</button>
+    </div>
+  );
+
+  const settingsButton = (
+    <button
+      className="icon plain"
+      aria-label="Settings"
+      aria-current={route.view === 'settings' ? 'page' : undefined}
+      onClick={() => go({ view: 'settings', date: route.date })}
+    >
+      <GearIcon />
+    </button>
+  );
+
   return (
     <div className={`app layout-${layout}`}>
-      <header className="app-header">
-        {layout === 'wide' && (
-          <>
-            <span className="brand">Planner</span>
-            <nav className="toptabs" aria-label="Views">
-              {tabs}
-            </nav>
-          </>
-        )}
-        <div className="title">{title(route)}</div>
-        {hasPeriod && (
-          <div className="period-nav">
-            <button className="icon" aria-label="Previous" onClick={() => step(-1)}>
-              <ChevronLeft />
-            </button>
-            <button className="today-btn" onClick={() => go({ view: route.view, date: todayISO() })}>
-              Today
-            </button>
-            <button className="icon" aria-label="Next" onClick={() => step(1)}>
-              <ChevronRight />
-            </button>
+      {layout === 'wide' ? (
+        <header className="app-header">
+          <span className="brand">Planner</span>
+          <nav className="toptabs" aria-label="Views">
+            {tabs}
+          </nav>
+          <div className="title">{title(route)}</div>
+          {periodNav}
+          {addButtons}
+          <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />
+          {settingsButton}
+        </header>
+      ) : (
+        <header className="app-header two-rows">
+          <div className="header-row">
+            <div className="title">{title(route)}</div>
+            <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />
+            {settingsButton}
           </div>
-        )}
-        <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />{/* dot only on the phone */}
-        <button
-          className="icon plain"
-          aria-label="Settings"
-          aria-current={route.view === 'settings' ? 'page' : undefined}
-          onClick={() => go({ view: 'settings', date: route.date })}
-        >
-          <GearIcon />
-        </button>
-      </header>
+          <div className="header-row">
+            {periodNav}
+            <span className="grow" />
+            {addButtons}
+          </div>
+        </header>
+      )}
 
       <UpdateBanner />
 
       <main className="app-main">
         {route.view === 'month' && <MonthView date={route.date} />}
         {route.view === 'week' && <WeekView date={route.date} />}
-        {route.view === 'day' && <DayView date={route.date} />}
+        {route.view === 'day' && <DayView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'notes' && <NotesView />}
         {route.view === 'settings' && <SettingsView account={account} />}
+        {route.view === 'projects' && <ProjectsView />}
       </main>
 
       {layout === 'compact' && (

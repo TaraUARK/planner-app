@@ -58,3 +58,14 @@ export function monthLabel(date: ISODate): string {
 export function dayLabel(date: ISODate): string {
   return format(fromISODate(date), 'EEEE, MMM d, yyyy');
 }
+
+/** '14:05' or '14:05:00' → '2:05 PM' */
+export function timeLabel(t: string | null): string {
+  if (!t) return '';
+  const d = parse(t.slice(0, 5), 'HH:mm', new Date());
+  return isValid(d) ? format(d, 'h:mm a') : t;
+}
+
+export function shortDate(date: ISODate): string {
+  return format(fromISODate(date), 'MMM d');
+}

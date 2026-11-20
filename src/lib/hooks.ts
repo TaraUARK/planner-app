@@ -54,13 +54,13 @@ export function useToday(): ISODate {
 // Routing (hash based, so reloading never 404s on GitHub Pages).
 //   #/week/2026-11-16  #/month/2026-11-01  #/day/2026-11-16  #/notes  #/settings
 // ---------------------------------------------------------------------------
-export type View = 'month' | 'week' | 'day' | 'notes' | 'settings';
+export type View = 'month' | 'week' | 'day' | 'notes' | 'settings' | 'projects';
 export interface Route {
   view: View;
   date: ISODate;
 }
 
-const VIEWS: View[] = ['month', 'week', 'day', 'notes', 'settings'];
+const VIEWS: View[] = ['month', 'week', 'day', 'notes', 'settings', 'projects'];
 
 /** Remembered so Notes/Settings → Week returns to the same week. */
 let lastDate: ISODate | null = null;
@@ -75,7 +75,7 @@ export function parseHash(hash: string): Route {
 }
 
 export function routeHash(r: Route): string {
-  return r.view === 'notes' || r.view === 'settings' ? `#/${r.view}` : `#/${r.view}/${r.date}`;
+  return r.view === 'month' || r.view === 'week' || r.view === 'day' ? `#/${r.view}/${r.date}` : `#/${r.view}`;
 }
 
 export function useRoute(): [Route, (r: Route) => void] {

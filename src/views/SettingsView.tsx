@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
+import { ChevronRightSmall } from '../components/Icons';
 import type { Account } from '../lib/account';
 import { db } from '../lib/db';
 import { useLayout, useSyncState, useWindowSize } from '../lib/hooks';
@@ -89,6 +90,15 @@ export function SettingsView({ account }: { account: Account }) {
           checked={settings?.show_holidays ?? true}
           onChange={(v) => void setSetting(account.settingsId, { show_holidays: v })}
         />
+      </div>
+
+      <h2>Organize</h2>
+      <div className="card">
+        <a className="row row-button" href="#/projects">
+          <span className="label">Projects</span>
+          <span className="value">Rename, merge, delete</span>
+          <ChevronRightSmall />
+        </a>
       </div>
 
       <h2>Sync</h2>

@@ -309,3 +309,176 @@ button:disabled { opacity: 0.5; cursor: default; }
   font-size: 17px; /* 16px+ stops iPhone from zooming in */
 }
 .error { color: var(--danger); font-size: 0.95rem; }
+
+/* ==========================================================================
+   Stage 2: header add buttons, forms, pop-up windows, Daily list, projects
+   ========================================================================== */
+.grow { flex: 1; }
+.muted { color: var(--text-muted); }
+.small { font-size: 0.85rem; }
+.center { text-align: center; }
+
+/* Phone header: two rows (title row, then navigation + add buttons) */
+.app-header.two-rows {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding-bottom: 6px;
+}
+.header-row { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.add-buttons { display: flex; gap: 6px; }
+.add-buttons button { padding: 0 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.layout-compact .add-buttons button { padding: 0 9px; font-size: 0.95rem; }
+.layout-wide .add-buttons { margin: 0 8px; }
+
+button.danger { color: var(--danger); border-color: var(--danger); background: none; }
+
+/* Pop-up windows: full-screen sheet on the phone, centered dialog on the Mac */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  background: var(--bg);
+  border-radius: 14px;
+  overflow: hidden;
+  outline: none;
+}
+.modal.sheet {
+  max-width: none;
+  max-height: none;
+  height: 100%;
+  border-radius: 0;
+  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+}
+.modal-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--header);
+}
+.modal-head h2 { margin: 0; font-size: 1.05rem; text-align: center; }
+.modal-head button { justify-self: start; color: var(--accent); }
+.modal-body { flex: 1; overflow: auto; padding: 16px; }
+.modal-foot {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px calc(10px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+}
+
+/* Forms */
+.form { display: grid; gap: 14px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span:first-child { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-inline { display: flex; align-items: center; gap: 10px; min-height: var(--tap); }
+.form input[type='text'],
+.form input[type='date'],
+.form input[type='time'],
+.form select,
+.form textarea,
+.picker input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 17px; /* 16px+ stops the iPhone zooming in */
+}
+.form textarea { resize: vertical; line-height: 1.4; }
+
+/* Two-choice switch (Work/Home, Appointment/Special date) */
+.segmented { justify-self: start; display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.segmented button { border: none; border-radius: 0; background: var(--surface); min-width: 96px; }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button.on { font-weight: 700; color: var(--text); }
+.segmented button.on.work { background: var(--work-bg); box-shadow: inset 0 -3px 0 var(--work); }
+.segmented button.on.home { background: var(--home-bg); box-shadow: inset 0 -3px 0 var(--home); }
+.segmented button.on.appt { background: var(--appt-bg); box-shadow: inset 0 -3px 0 var(--appt); }
+.segmented button.on.holiday { background: var(--holiday-bg); box-shadow: inset 0 -3px 0 var(--holiday); }
+
+/* Project picker */
+.picker { display: grid; gap: 6px; }
+.picker-list { display: grid; gap: 2px; max-height: 240px; overflow: auto; }
+.picker-hint { font-size: 0.85rem; padding: 2px 4px; }
+.picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  border: none;
+  background: none;
+  border-radius: 8px;
+}
+.picker-option:hover { background: var(--surface); }
+.picker-new { display: grid; gap: 8px; padding: 8px 4px; }
+.picked { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.picked .plain { color: var(--accent); }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.dot.work { background: var(--work); }
+.dot.home { background: var(--home); }
+
+/* Settings/Projects list rows that act as buttons/links */
+.row-button {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.row-button + .row-button { border-top: 1px solid var(--border); }
+.row-button:active { background: var(--surface-2); }
+
+/* Daily list */
+.day-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 4px 10px;
+  border-left: 6px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  touch-action: manipulation;
+}
+.item.work { border-left-color: var(--work); background: var(--work-bg); }
+.item.home { border-left-color: var(--home); background: var(--home-bg); }
+.item.appt { border-left: 9px solid var(--appt); background: var(--appt-bg); }
+.item.appt .item-title { font-weight: 700; color: var(--appt); }
+.item.holiday { border-left-color: var(--holiday); background: var(--holiday-bg); }
+.item.done { border-left-color: var(--done); background: var(--done-bg); }
+.item.done .item-title { color: var(--done); text-decoration: line-through; }
+.item.dragging { position: relative; z-index: 2; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); opacity: 0.95; }
+.item-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 4px;
+  height: auto;
+}
+.item-title { overflow-wrap: anywhere; }
+.item-meta { font-size: 0.85rem; color: var(--text-muted); }
+.overdue-tag { color: var(--overdue); font-weight: 700; margin-right: 6px; }
+.item.overdue { box-shadow: inset 0 0 0 2px var(--overdue); }
+.check { width: 26px; height: 26px; flex: none; margin: 0 4px 0 0; accent-color: var(--accent); }
+.drag-handle { color: var(--text-muted); cursor: grab; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }

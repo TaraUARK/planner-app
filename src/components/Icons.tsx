@@ -51,3 +51,13 @@ export const ChevronRight = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
+export const GripIcon = () => (
+  <svg {...base}>
+    <path d="M4 8h16M4 12h16M4 16h16" />
+  </svg>
+);
+export const ChevronRightSmall = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M9 18l6-6-6-6" />
+  </svg>
+);
