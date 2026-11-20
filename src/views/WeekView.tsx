@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useEditor } from '../components/Editor';
 import { moveProjectToKey, saveCellPositions, taskKey, updateTask } from '../lib/data';
 import { fromISODate, timeLabel } from '../lib/dates';
+import { holidayAsItem, holidaysBetween, isHolidayItem } from '../lib/holidays';
 import { useLayout, useToday } from '../lib/hooks';
 import { planMove } from '../lib/ordering';
 import { useProjects, useWeek } from '../lib/queries';
@@ -69,6 +70,7 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
   const projects = useProjects();
   const settings = useSettings(settingsId);
   const hideCompleted = settings?.hide_completed ?? false;
+  const showHolidays = settings?.show_holidays ?? true;
 
   const [active, setActive] = useState<DndData | null>(null);
   const [over, setOver] = useState<{ projectId: string; date: ISODate } | null>(null);
@@ -84,7 +86,10 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
     () => buildRows(projects ?? [], week?.tasks ?? [], days, saved, hideCompleted, taskKey),
     [projects, week, days, saved, hideCompleted],
   );
-  const lanes = useMemo(() => layoutBand(week?.appointments ?? [], days), [week, days]);
+  const lanes = useMemo(() => {
+    const holidays = showHolidays ? holidaysBetween(days[0], days[6]).map(holidayAsItem) : [];
+    return layoutBand([...(week?.appointments ?? []), ...holidays], days);
+  }, [week, days, showHolidays]);
   const loaded = !!week && !!projects;
 
   // On a narrow screen, open the week scrolled so today's column is visible.
@@ -306,6 +311,13 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
 
 function BandChip({ item, style, onOpen }: { item: BandItem; style: CSSProperties; onOpen: () => void }) {
   const a = item.appt;
+  if (isHolidayItem(a)) {
+    return (
+      <div className={`wk-band holiday ${a.holiday.observed ? 'observed' : ''}`} style={style} title={a.title}>
+        {a.title}
+      </div>
+    );
+  }
   const special = a.kind === 'special_date';
   const time = !special && !a.all_day && a.start_date === a.end_date ? timeLabel(a.start_time).replace(':00', '') : '';
   return (

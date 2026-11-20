@@ -669,3 +669,81 @@ button.danger { color: var(--danger); border-color: var(--danger); background: n
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 .layout-wide .toast { bottom: 24px; }
+
+/* ==========================================================================
+   Stage 4: holidays + Monthly calendar
+   ========================================================================== */
+.wk-band.holiday.observed,
+.item.holiday.observed { opacity: 0.75; font-style: italic; }
+div.wk-band { cursor: default; }
+
+.mo { --mo-num-h: 32px; display: flex; flex-direction: column; min-height: 100%; }
+.mo-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--header);
+  border-bottom: 1px solid var(--border);
+}
+.mo-head div { padding: 6px 0; text-align: center; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+.mo-week {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 84px;
+  border-bottom: 1px solid var(--border);
+}
+.layout-wide .mo-week { min-height: 112px; }
+.mo-day {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 0;
+  height: auto;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.9rem;
+}
+.mo-day:first-child { border-left: none; }
+.mo-day:hover { background: var(--surface); }
+.mo-day.other-month .mo-num { color: var(--text-muted); opacity: 0.6; }
+.mo-day.today { background: var(--today); }
+.mo-day.today .mo-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--today-ring);
+  font-weight: 700;
+}
+.layout-compact .mo-day { justify-content: center; padding: 3px 0; }
+
+/* Items sit on top of the day boxes; taps go through to the day underneath. */
+.mo-chip {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  margin: 1px 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mo-chip.appt { background: var(--appt); color: #fff; font-weight: 650; }
+@media (prefers-color-scheme: dark) { .mo-chip.appt { color: #2a0a0a; } }
+.mo-chip.holiday { background: var(--holiday-bg); color: var(--text); border-left: 4px solid var(--holiday); border-radius: 0 4px 4px 0; }
+.mo-chip.observed { opacity: 0.75; font-style: italic; }
+.mo-chip.cont-before { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.mo-chip.cont-after { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.layout-compact .mo-chip { font-size: 0.7rem; padding: 0 3px; margin: 1px; }
+.mo-time { font-weight: 700; }
+.mo-more { position: relative; z-index: 1; pointer-events: none; padding: 0 4px; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }

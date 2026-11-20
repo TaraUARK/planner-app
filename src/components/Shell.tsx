@@ -142,7 +142,7 @@ function Frame({ account }: { account: Account }) {
       <UpdateBanner />
 
       <main className="app-main">
-        {route.view === 'month' && <MonthView date={route.date} />}
+        {route.view === 'month' && <MonthView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'week' && <WeekView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'day' && <DayView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'notes' && <NotesView />}

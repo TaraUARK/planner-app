@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRows, layoutBand, weekDays } from '../week';
+import { buildRows, layoutBand, monthWeeks, weekDays } from '../week';
 import type { Appointment, Project, Task } from '../types';
 
 const days = weekDays('2026-11-19'); // Mon Nov 16 … Sun Nov 22
@@ -74,5 +74,16 @@ describe('buildRows (one row per project with tasks this week)', () => {
     const saved = new Map([[key(tasks[2]), 'a0'], [key(tasks[0]), 'a1']]);
     const [row] = buildRows(projects, tasks, days, saved, false, key);
     expect(row.cells[0].map((t) => t.id)).toEqual(['c', 'a', 'b']);
+  });
+});
+
+describe('monthWeeks', () => {
+  it('covers the month in Sunday-to-Saturday weeks', () => {
+    const weeks = monthWeeks('2026-11-19');
+    expect(weeks[0][0]).toBe('2026-11-01'); // Nov 1, 2026 is a Sunday
+    expect(weeks.at(-1)!.at(-1)).toBe('2026-12-05');
+    expect(weeks).toHaveLength(5);
+    expect(monthWeeks('2026-08-10')).toHaveLength(6); // Aug 2026 starts on a Saturday
+    expect(monthWeeks('2026-08-10')[0][0]).toBe('2026-07-26');
   });
 });

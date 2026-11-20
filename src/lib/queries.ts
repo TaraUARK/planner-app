@@ -105,3 +105,14 @@ export function useOverdue(today: ISODate): Task[] | undefined {
     [today],
   );
 }
+
+/** Appointments and special dates that touch any day between first and last. */
+export function useAppointmentsBetween(first: ISODate, last: ISODate): Appointment[] | undefined {
+  return useLiveQuery(
+    async () =>
+      (await db.appointments.where('start_date').belowOrEqual(last).filter((a) => a.end_date >= first).toArray()).filter(
+        alive,
+      ),
+    [first, last],
+  );
+}

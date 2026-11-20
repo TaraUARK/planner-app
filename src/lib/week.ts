@@ -90,3 +90,16 @@ export function buildRows(
   }
   return rows;
 }
+
+/** Weeks (Sunday → Saturday) covering the month that contains `date`. */
+export function monthWeeks(date: ISODate): ISODate[][] {
+  const d = fromISODate(date);
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const start = addDays(first, -first.getDay());
+  const weeks: ISODate[][] = [];
+  for (let day = start; day <= last; day = addDays(day, 7)) {
+    weeks.push(Array.from({ length: 7 }, (_, i) => toISODate(addDays(day, i))));
+  }
+  return weeks;
+}
