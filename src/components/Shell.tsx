@@ -145,7 +145,7 @@ function Frame({ account }: { account: Account }) {
         {route.view === 'month' && <MonthView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'week' && <WeekView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'day' && <DayView date={route.date} settingsId={account.settingsId} />}
-        {route.view === 'notes' && <NotesView />}
+        {route.view === 'notes' && <NotesView noteId={route.noteId} />}
         {route.view === 'settings' && <SettingsView account={account} />}
         {route.view === 'projects' && <ProjectsView />}
       </main>

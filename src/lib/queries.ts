@@ -15,7 +15,7 @@ import {
   type ApptOcc,
   type TaskOcc,
 } from './recur';
-import type { Appointment, ISODate, ItemPosition, OccurrenceException, Project, Task } from './types';
+import type { Appointment, ISODate, ItemPosition, Note, OccurrenceException, Project, Task } from './types';
 
 const alive = <T extends { deleted_at: string | null }>(r: T) => !r.deleted_at;
 
@@ -146,4 +146,26 @@ export function useOverdue(today: ISODate): TaskOcc[] | undefined {
 /** Appointments and special dates (including repeats) that touch any day between first and last. */
 export function useAppointmentsBetween(first: ISODate, last: ISODate): ApptOcc[] | undefined {
   return useLiveQuery(() => loadApptOccs(first, last), [first, last]);
+}
+
+/** All notes, in their saved order (newest-added at the top unless rearranged). */
+export function useNotes(): Note[] | undefined {
+  return useLiveQuery(
+    async () => (await db.notes.toArray()).filter(alive).sort((a, b) => cmp(a.sort_key, b.sort_key) || cmp(b.created_at, a.created_at)),
+    [],
+  );
+}
+
+export function useNote(id: string | undefined): Note | null | undefined {
+  return useLiveQuery(async () => (id ? ((await db.notes.get(id)) ?? null) : null), [id]);
+}
+
+/** Case-insensitive search of titles and text; every word must appear. */
+export function searchNotes(notes: Note[], query: string): Note[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return notes;
+  return notes.filter((n) => {
+    const hay = `${n.title}\n${n.body_text}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
 }

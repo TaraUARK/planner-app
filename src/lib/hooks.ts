@@ -58,6 +58,8 @@ export type View = 'month' | 'week' | 'day' | 'notes' | 'settings' | 'projects';
 export interface Route {
   view: View;
   date: ISODate;
+  /** Notes: the open note, if any (#/notes/<id>). */
+  noteId?: string;
 }
 
 const VIEWS: View[] = ['month', 'week', 'day', 'notes', 'settings', 'projects'];
@@ -68,14 +70,18 @@ let lastDate: ISODate | null = null;
 export function parseHash(hash: string): Route {
   const [, view, date] = hash.replace(/^#/, '').split('/');
   if (isISODate(date)) lastDate = date;
+  const v = VIEWS.includes(view as View) ? (view as View) : 'week';
   return {
-    view: VIEWS.includes(view as View) ? (view as View) : 'week',
+    view: v,
     date: isISODate(date) ? date : (lastDate ?? todayISO()),
+    ...(v === 'notes' && date ? { noteId: date } : {}),
   };
 }
 
 export function routeHash(r: Route): string {
-  return r.view === 'month' || r.view === 'week' || r.view === 'day' ? `#/${r.view}/${r.date}` : `#/${r.view}`;
+  if (r.view === 'month' || r.view === 'week' || r.view === 'day') return `#/${r.view}/${r.date}`;
+  if (r.view === 'notes' && r.noteId) return `#/notes/${r.noteId}`;
+  return `#/${r.view}`;
 }
 
 export function useRoute(): [Route, (r: Route) => void] {

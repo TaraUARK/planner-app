@@ -2,12 +2,13 @@
 // the device immediately and queues the change for syncing.
 
 import { db } from './db';
+import { generateKeyBetween } from 'fractional-indexing';
 import { keyAfterAll, type PositionWrite } from './ordering';
 import { createRow, softDelete, updateRow } from './outbox';
 import { exceptionId, occursOn, withUntil, type ApptOcc, type TaskOcc } from './recur';
 import { addDays } from 'date-fns';
 import { fromISODate, toISODate } from './dates';
-import type { Appointment, Category, ISODate, OccurrenceException, Project, Task } from './types';
+import type { Appointment, Category, ISODate, Note, OccurrenceException, Project, Task } from './types';
 
 export const newId = (): string => crypto.randomUUID();
 
@@ -293,3 +294,25 @@ export async function editTaskOccurrence(series: Task, occ: TaskOcc, input: Task
     overrides,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+/** A new, empty note at the TOP of the list. */
+export async function createNote(): Promise<Note> {
+  const keys = (await db.notes.toArray()).filter(alive).map((n) => n.sort_key).sort();
+  return createRow(db, 'notes', {
+    id: newId(),
+    title: '',
+    body_json: null,
+    body_text: '',
+    sort_key: generateKeyBetween(null, keys[0] ?? null),
+  });
+}
+
+export async function saveNote(id: string, patch: Partial<Pick<Note, 'title' | 'body_json' | 'body_text'>>): Promise<void> {
+  if (await db.notes.get(id)) await updateRow(db, 'notes', id, patch);
+}
+
+export const deleteNote = (id: string) => softDelete(db, 'notes', id);
+export const moveNoteToKey = (id: string, sort_key: string) => updateRow(db, 'notes', id, { sort_key });

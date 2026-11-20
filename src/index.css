@@ -761,3 +761,84 @@ div.wk-band { cursor: default; }
 @media (prefers-color-scheme: dark) { .weekday-picker button.on { color: #0b1220; } }
 .scope-choices { display: grid; gap: 10px; }
 .scope-choices p { margin: 0 0 4px; }
+
+/* ==========================================================================
+   Stage 6: Notes
+   ========================================================================== */
+.notes-split { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; height: 100%; }
+.notes-side { border-right: 1px solid var(--border); overflow: auto; background: var(--surface); }
+.notes-side .page { padding: 12px; }
+.notes-main { overflow: auto; }
+.notes-tools { display: flex; gap: 8px; margin-bottom: 12px; }
+.search {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 17px;
+}
+.note-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.note-card {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  touch-action: manipulation;
+}
+.note-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.note-card.dragging { position: relative; z-index: 2; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+.note-card-body {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.note-page { max-width: 820px; margin: 0 auto; padding: 8px 16px 40px; }
+.note-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.note-top .back { display: inline-flex; align-items: center; gap: 2px; padding-left: 0; color: var(--accent); }
+.note-title {
+  width: 100%;
+  border: none;
+  background: none;
+  font-size: 1.6rem;
+  font-weight: 700;
+  padding: 6px 0;
+  outline: none;
+}
+.note-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.note-toolbar button { min-width: 44px; padding: 0 10px; font-size: 1rem; }
+.note-toolbar button.on { background: var(--work-bg); border-color: var(--accent); color: var(--accent); }
+
+.note-editor { padding-top: 8px; }
+.note-body { min-height: 50vh; outline: none; line-height: 1.55; font-size: 1.05rem; }
+.note-body p { margin: 0 0 0.6em; }
+.note-body h1 { font-size: 1.45rem; margin: 0.9em 0 0.4em; }
+.note-body h2 { font-size: 1.2rem; margin: 0.8em 0 0.35em; }
+.note-body ul, .note-body ol { padding-left: 1.4em; margin: 0 0 0.6em; }
+.note-body li p { margin: 0.1em 0; }
+.note-body a { color: var(--accent); }
+.note-body ul[data-type='taskList'] { list-style: none; padding-left: 0.2em; }
+.note-body ul[data-type='taskList'] li { display: flex; align-items: flex-start; gap: 8px; }
+.note-body ul[data-type='taskList'] li > label { flex: none; margin-top: 0.25em; }
+.note-body ul[data-type='taskList'] li > label input { width: 20px; height: 20px; accent-color: var(--accent); }
+.note-body ul[data-type='taskList'] li > div { flex: 1; min-width: 0; }
+.note-body ul[data-type='taskList'] li[data-checked='true'] > div { color: var(--done); text-decoration: line-through; }
+.note-body p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--text-muted); float: left; height: 0; pointer-events: none; }
