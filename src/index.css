@@ -747,3 +747,17 @@ div.wk-band { cursor: default; }
 .layout-compact .mo-chip { font-size: 0.7rem; padding: 0 3px; margin: 1px; }
 .mo-time { font-weight: 700; }
 .mo-more { position: relative; z-index: 1; pointer-events: none; padding: 0 4px; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+
+/* ==========================================================================
+   Stage 5: repeating items
+   ========================================================================== */
+.repeat-mark { color: var(--text-muted); font-size: 0.85em; }
+.repeat { display: grid; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+.repeat .num { width: 64px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 17px; }
+.repeat input[type='date'] { min-height: 40px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.weekday-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.weekday-picker button { width: 40px; min-height: 40px; padding: 0; border-radius: 50%; }
+.weekday-picker button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .weekday-picker button.on { color: #0b1220; } }
+.scope-choices { display: grid; gap: 10px; }
+.scope-choices p { margin: 0 0 4px; }

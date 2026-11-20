@@ -18,18 +18,20 @@ import { CSS } from '@dnd-kit/utilities';
 import { format } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useEditor } from '../components/Editor';
-import { moveProjectToKey, saveCellPositions, taskKey, updateTask } from '../lib/data';
+import { moveProjectToKey, moveTaskOccurrence, saveCellPositions } from '../lib/data';
 import { fromISODate, timeLabel } from '../lib/dates';
 import { holidayAsItem, holidaysBetween, isHolidayItem } from '../lib/holidays';
 import { useLayout, useToday } from '../lib/hooks';
 import { planMove } from '../lib/ordering';
-import { useProjects, useWeek } from '../lib/queries';
+import { useOverdue, useProjects, useWeek } from '../lib/queries';
+import type { ApptOcc, TaskOcc } from '../lib/recur';
 import { useSettings } from '../lib/settings';
-import type { Category, ISODate, Project, Task } from '../lib/types';
+import type { Appointment, Category, ISODate, Project } from '../lib/types';
 import { buildRows, layoutBand, weekDays, type BandItem } from '../lib/week';
 
 // Data attached to draggable / droppable things.
-type TaskData = { type: 'task'; taskId: string; projectId: string; date: ISODate };
+/** `key` identifies one occurrence (a repeating task can appear several times in a week). */
+type TaskData = { type: 'task'; key: string; projectId: string; date: ISODate };
 type CellData = { type: 'cell'; projectId: string; date: ISODate };
 type ProjectData = { type: 'project'; projectId: string; category: Category };
 type DndData = TaskData | CellData | ProjectData;
@@ -71,6 +73,8 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
   const settings = useSettings(settingsId);
   const hideCompleted = settings?.hide_completed ?? false;
   const showHolidays = settings?.show_holidays ?? true;
+  const overdue = useOverdue(today);
+  const overdueKeys = useMemo(() => new Set((overdue ?? []).map((o) => o.key)), [overdue]);
 
   const [active, setActive] = useState<DndData | null>(null);
   const [over, setOver] = useState<{ projectId: string; date: ISODate } | null>(null);
@@ -83,12 +87,12 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
     [week],
   );
   const rows = useMemo(
-    () => buildRows(projects ?? [], week?.tasks ?? [], days, saved, hideCompleted, taskKey),
+    () => buildRows(projects ?? [], week?.tasks ?? [], days, saved, hideCompleted, (t) => t.key),
     [projects, week, days, saved, hideCompleted],
   );
   const lanes = useMemo(() => {
     const holidays = showHolidays ? holidaysBetween(days[0], days[6]).map(holidayAsItem) : [];
-    return layoutBand([...(week?.appointments ?? []), ...holidays], days);
+    return layoutBand<Appointment>([...(week?.appointments ?? []), ...holidays], days);
   }, [week, days, showHolidays]);
   const loaded = !!week && !!projects;
 
@@ -120,7 +124,7 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
 
   if (!loaded) return null;
 
-  const allTasks = new Map((week.tasks ?? []).map((t) => [t.id, t]));
+  const allTasks = new Map((week.tasks ?? []).map((t) => [t.key, t]));
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const targetOf = (d: DndData | undefined) =>
     d && (d.type === 'task' || d.type === 'cell') ? { projectId: d.projectId, date: d.date } : null;
@@ -143,10 +147,12 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
         return;
       }
       if (target.date !== a.date) {
-        void updateTask(a.taskId, { date: target.date }); // lands at the bottom of the new day's cell
+        // Lands at the bottom of the new day's cell. A repeating task moves this occurrence only.
+        const occ = allTasks.get(a.key);
+        if (occ) void moveTaskOccurrence(occ, target.date);
         return;
       }
-      if (o.type === 'task' && o.taskId !== a.taskId) {
+      if (o.type === 'task' && o.key !== a.key) {
         // Reorder inside the cell. Include hidden completed tasks so their spots are kept.
         const full = buildRows(
           [projectById.get(a.projectId)!],
@@ -154,14 +160,9 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
           [a.date],
           saved,
           false,
-          taskKey,
-        )[0].cells[0].map((t) => ({ key: taskKey(t) }));
-        const writes = planMove(
-          full,
-          taskKey(allTasks.get(a.taskId)!),
-          taskKey(allTasks.get(o.taskId)!),
-          saved,
-        );
+          (t) => t.key,
+        )[0].cells[0].map((t) => ({ key: t.key }));
+        const writes = planMove(full, a.key, o.key, saved);
         if (writes.length) void saveCellPositions(a.date, writes);
       }
       return;
@@ -186,7 +187,7 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
 
   const bandRows = lanes.length;
   const firstTaskRow = 2 + bandRows;
-  const activeTask = active?.type === 'task' ? allTasks.get(active.taskId) : undefined;
+  const activeTask = active?.type === 'task' ? allTasks.get(active.key) : undefined;
   const activeProject = active?.type === 'project' ? projectById.get(active.projectId) : undefined;
   const recentlyDragged = () => Date.now() - lastDragEnd.current < 400;
 
@@ -234,10 +235,13 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
               {lanes.map((lane, li) =>
                 lane.map((item) => (
                   <BandChip
-                    key={item.appt.id}
+                    key={'key' in item.appt ? String(item.appt.key) : item.appt.id}
                     item={item}
                     style={{ gridRow: 2 + li, gridColumn: `${item.startCol + 2} / ${item.endCol + 3}` }}
-                    onOpen={() => editor.openAppointment(item.appt.id, days[item.startCol])}
+                    onOpen={() => {
+                      const occ = item.appt as ApptOcc;
+                      editor.openAppointment(occ.id, days[item.startCol], occ.repeating ? occ.originalDate : undefined);
+                    }}
                   />
                 )),
               )}
@@ -275,7 +279,10 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
                             : ''
                         }
                         onAdd={() => !recentlyDragged() && editor.addTask(d, row.project.id)}
-                        onOpenTask={(t) => !recentlyDragged() && editor.openTask(t.id, t.date)}
+                        overdueKeys={overdueKeys}
+                        onOpenTask={(t) =>
+                          !recentlyDragged() && editor.openTask(t.id, t.date, t.repeating ? t.originalDate : undefined)
+                        }
                       />
                     )),
                   ];
@@ -360,12 +367,13 @@ function ProjectTitle(props: { project: Project; style: CSSProperties; dropHint:
 function Cell(props: {
   project: Project;
   date: ISODate;
-  tasks: Task[];
+  tasks: TaskOcc[];
   today: ISODate;
   style: CSSProperties;
   state: '' | 'ok' | 'no';
+  overdueKeys: Set<string>;
   onAdd: () => void;
-  onOpenTask: (t: Task) => void;
+  onOpenTask: (t: TaskOcc) => void;
 }) {
   const { project, date, tasks, today } = props;
   const { setNodeRef } = useDroppable({
@@ -378,9 +386,9 @@ function Cell(props: {
       className={`wk-cell ${date === today ? 'today' : ''} ${props.state ? `drop-${props.state}` : ''}`}
       style={props.style}
     >
-      <SortableContext id={`cell:${project.id}:${date}`} items={tasks.map((t) => `task:${t.id}`)} strategy={verticalListSortingStrategy}>
+      <SortableContext id={`cell:${project.id}:${date}`} items={tasks.map((t) => t.key)} strategy={verticalListSortingStrategy}>
         {tasks.map((t) => (
-          <TaskChip key={t.id} task={t} project={project} overdue={!t.done && t.date < today} onOpen={() => props.onOpenTask(t)} />
+          <TaskChip key={t.key} task={t} project={project} overdue={props.overdueKeys.has(t.key)} onOpen={() => props.onOpenTask(t)} />
         ))}
       </SortableContext>
       <button
@@ -393,11 +401,11 @@ function Cell(props: {
   );
 }
 
-function TaskChip(props: { task: Task; project: Project; overdue: boolean; onOpen: () => void }) {
+function TaskChip(props: { task: TaskOcc; project: Project; overdue: boolean; onOpen: () => void }) {
   const { task, project } = props;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: `task:${task.id}`,
-    data: { type: 'task', taskId: task.id, projectId: project.id, date: task.date } satisfies TaskData,
+    id: task.key,
+    data: { type: 'task', key: task.key, projectId: project.id, date: task.date } satisfies TaskData,
   });
   return (
     <button
@@ -419,6 +427,7 @@ function TaskChip(props: { task: Task; project: Project; overdue: boolean; onOpe
     >
       {props.overdue && <b className="overdue-tag">! </b>}
       {task.title}
+      {task.repeating && <span className="repeat-mark" aria-label="repeats"> ↻</span>}
     </button>
   );
 }

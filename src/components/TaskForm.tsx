@@ -1,21 +1,71 @@
 import { useEffect, useState } from 'react';
-import { createProject, createTask, deleteTask, updateTask } from '../lib/data';
+import {
+  createProject,
+  createTask,
+  deleteTask,
+  editTaskFromHere,
+  editTaskOccurrence,
+  endSeriesBefore,
+  setOccurrenceDone,
+  skipOccurrence,
+  updateTask,
+} from '../lib/data';
 import { db } from '../lib/db';
 import { isISODate } from '../lib/dates';
 import { useTask } from '../lib/queries';
-import type { ISODate } from '../lib/types';
+import {
+  defaultSpec,
+  exceptionId,
+  oneTimeTask,
+  rruleToSpec,
+  specToRRule,
+  taskOccKey,
+  type RepeatSpec,
+  type TaskOcc,
+} from '../lib/recur';
+import type { ISODate, Task } from '../lib/types';
 import { Modal } from './Modal';
 import { ProjectPicker, type PickedProject } from './ProjectPicker';
+import { RepeatEditor, ScopeChooser } from './RepeatEditor';
 
-/** Add a task (taskId = null) or open an existing one (the detail window). */
-export function TaskForm(props: { taskId: string | null; date: ISODate; projectId?: string; onClose: () => void }) {
+/** The occurrence being edited: the task itself, or one day of a repeating task. */
+async function loadOccurrence(series: Task, originalDate: ISODate | undefined): Promise<TaskOcc> {
+  if (!series.rrule || !originalDate) return oneTimeTask(series);
+  const e = await db.occurrence_exceptions.get(exceptionId('task', series.id, originalDate));
+  const ex = e && !e.deleted_at ? e : undefined;
+  return {
+    ...series,
+    ...(ex?.overrides as Partial<Task> | undefined),
+    date: ex?.new_date ?? originalDate,
+    done: ex?.done ?? false,
+    originalDate,
+    repeating: true,
+    key: taskOccKey(series.id, originalDate),
+  };
+}
+
+/**
+ * Add a task (taskId = null) or open one (the detail window). For a repeating
+ * task, `originalDate` says which occurrence was tapped.
+ */
+export function TaskForm(props: {
+  taskId: string | null;
+  date: ISODate;
+  originalDate?: ISODate;
+  projectId?: string;
+  onClose: () => void;
+}) {
   const { taskId, onClose } = props;
-  const existing = useTask(taskId);
+  const series = useTask(taskId);
+  const [occ, setOcc] = useState<TaskOcc | null>(null);
   const [title, setTitle] = useState('');
   const [project, setProject] = useState<PickedProject | null>(null);
   const [date, setDate] = useState(props.date);
   const [notes, setNotes] = useState('');
   const [done, setDone] = useState(false);
+  const [spec, setSpec] = useState<RepeatSpec>(defaultSpec(props.date));
+  const [repeatTouched, setRepeatTouched] = useState(false);
+  const [asking, setAsking] = useState<null | 'save' | 'delete'>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(taskId === null);
 
@@ -27,19 +77,22 @@ export function TaskForm(props: { taskId: string | null; date: ISODate; projectI
 
   // Fill the form once when opening an existing task.
   useEffect(() => {
-    if (loaded || !existing) return;
+    if (loaded || !series) return;
     void (async () => {
-      const p = await db.projects.get(existing.project_id);
-      setTitle(existing.title);
-      setDate(existing.date);
-      setNotes(existing.notes);
-      setDone(existing.done);
+      const o = await loadOccurrence(series, props.originalDate);
+      const p = await db.projects.get(o.project_id);
+      setOcc(o);
+      setTitle(o.title);
+      setDate(o.date);
+      setNotes(o.notes);
+      setDone(o.done);
+      setSpec(rruleToSpec(series.rrule, series.date));
       if (p) setProject({ kind: 'existing', project: p });
       setLoaded(true);
     })();
-  }, [existing, loaded]);
+  }, [series, loaded, props.originalDate]);
 
-  if (taskId && existing === null) {
+  if (taskId && series === null) {
     return (
       <Modal title="Task" onClose={onClose}>
         <p className="muted">This task no longer exists.</p>
@@ -47,26 +100,80 @@ export function TaskForm(props: { taskId: string | null; date: ISODate; projectI
     );
   }
 
+  const repeating = !!series?.rrule && !!occ?.repeating;
+
+  const validate = (): string | null => {
+    if (!title.trim()) return 'Enter a task title.';
+    if (!project) return 'Choose a project.';
+    if (!isISODate(date)) return 'Choose a date.';
+    return null;
+  };
+
+  const projectIdNow = async () =>
+    project!.kind === 'existing' ? project!.project.id : (await createProject(project!.name, project!.category)).id;
+
   const save = async () => {
-    if (!title.trim()) return setError('Enter a task title.');
-    if (!project) return setError('Choose a project.');
-    if (!isISODate(date)) return setError('Choose a date.');
-    const projectId =
-      project.kind === 'existing' ? project.project.id : (await createProject(project.name, project.category)).id;
-    if (taskId) await updateTask(taskId, { title, project_id: projectId, date, notes, done });
-    else await createTask({ title, project_id: projectId, date, notes });
+    const problem = validate();
+    if (problem) return setError(problem);
+    if (!taskId || !series || !occ) {
+      await createTask({ title, project_id: await projectIdNow(), date, notes, rrule: specToRRule(spec, date) });
+      return onClose();
+    }
+    if (!repeating) {
+      await updateTask(taskId, {
+        title,
+        project_id: await projectIdNow(),
+        date,
+        notes,
+        done,
+        rrule: specToRRule(spec, date),
+      });
+      return onClose();
+    }
+    // Repeating: if only "done" changed, just tick this occurrence.
+    const sameProject = project!.kind === 'existing' && project!.project.id === occ.project_id;
+    const onlyDone =
+      !repeatTouched && title.trim() === occ.title && notes === occ.notes && date === occ.date && sameProject;
+    if (onlyDone) {
+      if (done !== occ.done) await setOccurrenceDone(occ, done);
+      return onClose();
+    }
+    setAsking('save');
+  };
+
+  const saveRepeating = async (scope: 'one' | 'future') => {
+    if (!series || !occ) return;
+    const projectId = await projectIdNow();
+    if (scope === 'one') {
+      await editTaskOccurrence(series, occ, { title, project_id: projectId, date, notes, done });
+    } else {
+      // Keep the same pattern (re-anchored to the new start date) unless it was edited.
+      const rule = repeatTouched
+        ? specToRRule(spec, date)
+        : specToRRule(rruleToSpec(series.rrule, series.date), date);
+      await editTaskFromHere(series, occ.originalDate, { title, project_id: projectId, date, notes, done, rrule: rule });
+    }
     onClose();
   };
 
   const remove = async () => {
-    if (!taskId || !window.confirm('Delete this task?')) return;
+    if (!taskId) return;
+    if (repeating) return setAsking('delete');
+    if (!window.confirm('Delete this task?')) return;
     await deleteTask(taskId);
+    onClose();
+  };
+
+  const removeRepeating = async (scope: 'one' | 'future') => {
+    if (!series || !occ) return;
+    if (scope === 'one') await skipOccurrence('task', series.id, occ.originalDate);
+    else await endSeriesBefore('task', series.id, occ.originalDate);
     onClose();
   };
 
   return (
     <Modal
-      title={taskId ? 'Task' : 'Add task'}
+      title={taskId ? (repeating ? 'Repeating task' : 'Task') : 'Add task'}
       onClose={onClose}
       footer={
         <>
@@ -110,15 +217,35 @@ export function TaskForm(props: { taskId: string | null; date: ISODate; projectI
         {taskId && (
           <label className="field-inline">
             <input type="checkbox" className="switch" checked={done} onChange={(e) => setDone(e.target.checked)} />
-            <span>Done</span>
+            <span>Done{repeating ? ' (this day)' : ''}</span>
           </label>
         )}
+        <RepeatEditor
+          spec={spec}
+          start={date}
+          onChange={(s) => {
+            setSpec(s);
+            setRepeatTouched(true);
+          }}
+        />
         <label className="field">
           <span>Notes</span>
           <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
         {error && <div className="error">{error}</div>}
       </form>
+
+      {asking && (
+        <ScopeChooser
+          action={asking}
+          allowThisOnly={asking === 'delete' || !repeatTouched}
+          onCancel={() => setAsking(null)}
+          onChoose={(scope) => {
+            setAsking(null);
+            void (asking === 'save' ? saveRepeating(scope) : removeRepeating(scope));
+          }}
+        />
+      )}
     </Modal>
   );
 }

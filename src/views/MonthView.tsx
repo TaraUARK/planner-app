@@ -66,7 +66,7 @@ export function MonthView({ date, settingsId }: { date: ISODate; settingsId: str
               );
             })}
             {shown.map((lane, li) =>
-              lane.map((it) => <MonthChip key={it.appt.id} item={it} row={li + 2} compact={layout === 'compact'} />),
+              lane.map((it) => <MonthChip key={'key' in it.appt ? String(it.appt.key) : it.appt.id} item={it} row={li + 2} compact={layout === 'compact'} />),
             )}
             {more.map((n, i) =>
               n > 0 ? (

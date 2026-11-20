@@ -11,8 +11,8 @@ export function weekDays(date: ISODate): ISODate[] {
   return Array.from({ length: 7 }, (_, i) => toISODate(addDays(monday, i)));
 }
 
-export interface BandItem {
-  appt: Appointment;
+export interface BandItem<A extends Appointment = Appointment> {
+  appt: A;
   /** Column 0 (Monday) … 6 (Sunday), inclusive. */
   startCol: number;
   endCol: number;
@@ -26,10 +26,10 @@ export interface BandItem {
  * row; an item spanning several days takes several columns. Items are packed
  * into the first lane where they don't overlap anything.
  */
-export function layoutBand(appts: Appointment[], days: ISODate[]): BandItem[][] {
+export function layoutBand<A extends Appointment>(appts: A[], days: ISODate[]): BandItem<A>[][] {
   const first = days[0];
   const last = days[days.length - 1];
-  const items: BandItem[] = appts
+  const items: BandItem<A>[] = appts
     .filter((a) => a.start_date <= last && a.end_date >= first)
     .map((appt) => {
       const startCol = appt.start_date < first ? 0 : days.indexOf(appt.start_date);
@@ -46,7 +46,7 @@ export function layoutBand(appts: Appointment[], days: ISODate[]): BandItem[][] 
         a.appt.title.localeCompare(b.appt.title),
     );
 
-  const lanes: BandItem[][] = [];
+  const lanes: BandItem<A>[][] = [];
   for (const item of items) {
     const lane = lanes.find((l) => l.every((o) => o.endCol < item.startCol || o.startCol > item.endCol));
     if (lane) lane.push(item);
@@ -56,10 +56,10 @@ export function layoutBand(appts: Appointment[], days: ISODate[]): BandItem[][] 
   return lanes;
 }
 
-export interface WeekRow {
+export interface WeekRow<T extends Task = Task> {
   project: Project;
   /** Visible tasks per day (index 0 = Monday), in saved cell order. */
-  cells: Task[][];
+  cells: T[][];
 }
 
 /**
@@ -68,15 +68,15 @@ export interface WeekRow {
  * sorted. Tasks inside a cell follow their saved cell order; tasks without a
  * saved spot go to the bottom of the cell (oldest first).
  */
-export function buildRows(
+export function buildRows<T extends Task>(
   projects: Project[],
-  tasks: Task[],
+  tasks: T[],
   days: ISODate[],
   cellPositions: Map<string, string>,
   hideCompleted: boolean,
-  keyOf: (t: Task) => string,
-): WeekRow[] {
-  const rows: WeekRow[] = [];
+  keyOf: (t: T) => string,
+): WeekRow<T>[] {
+  const rows: WeekRow<T>[] = [];
   for (const project of projects) {
     const mine = tasks.filter((t) => t.project_id === project.id && !(hideCompleted && t.done));
     if (mine.length === 0) continue;

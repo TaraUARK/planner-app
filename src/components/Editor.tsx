@@ -7,8 +7,8 @@ import { OverdueList } from './OverdueList';
 import { TaskForm } from './TaskForm';
 
 type Open =
-  | { kind: 'task'; id: string | null; date: ISODate; projectId?: string }
-  | { kind: 'appointment'; id: string | null; date: ISODate }
+  | { kind: 'task'; id: string | null; date: ISODate; projectId?: string; originalDate?: ISODate }
+  | { kind: 'appointment'; id: string | null; date: ISODate; originalDate?: ISODate }
   | { kind: 'overdue' }
   | { kind: 'project'; id: string }
   | null;
@@ -18,9 +18,10 @@ interface EditorApi {
   addTask: (date: ISODate, projectId?: string) => void;
   openOverdue: () => void;
   openProject: (id: string) => void;
-  openTask: (id: string, date: ISODate) => void;
+  /** originalDate: which occurrence of a repeating task was tapped. */
+  openTask: (id: string, date: ISODate, originalDate?: ISODate) => void;
   addAppointment: (date: ISODate) => void;
-  openAppointment: (id: string, date: ISODate) => void;
+  openAppointment: (id: string, date: ISODate, originalDate?: ISODate) => void;
 }
 
 const Ctx = createContext<EditorApi | null>(null);
@@ -38,9 +39,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       addTask: (date, projectId) => setOpen({ kind: 'task', id: null, date, projectId }),
       openOverdue: () => setOpen({ kind: 'overdue' }),
       openProject: (id) => setOpen({ kind: 'project', id }),
-      openTask: (id, date) => setOpen({ kind: 'task', id, date }),
+      openTask: (id, date, originalDate) => setOpen({ kind: 'task', id, date, originalDate }),
       addAppointment: (date) => setOpen({ kind: 'appointment', id: null, date }),
-      openAppointment: (id, date) => setOpen({ kind: 'appointment', id, date }),
+      openAppointment: (id, date, originalDate) => setOpen({ kind: 'appointment', id, date, originalDate }),
     }),
     [],
   );
@@ -48,12 +49,25 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={api}>
       {children}
       {open?.kind === 'task' && (
-        <TaskForm key={open.id ?? 'new'} taskId={open.id} date={open.date} projectId={open.projectId} onClose={close} />
+        <TaskForm
+          key={`${open.id ?? 'new'}@${open.originalDate ?? ''}`}
+          taskId={open.id}
+          date={open.date}
+          originalDate={open.originalDate}
+          projectId={open.projectId}
+          onClose={close}
+        />
       )}
       {open?.kind === 'overdue' && <OverdueList onClose={close} />}
       {open?.kind === 'project' && <ProjectWindow id={open.id} onClose={close} />}
       {open?.kind === 'appointment' && (
-        <AppointmentForm key={open.id ?? 'new'} id={open.id} date={open.date} onClose={close} />
+        <AppointmentForm
+          key={`${open.id ?? 'new'}@${open.originalDate ?? ''}`}
+          id={open.id}
+          date={open.date}
+          originalDate={open.originalDate}
+          onClose={close}
+        />
       )}
     </Ctx.Provider>
   );

@@ -5,7 +5,17 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { fromISODate, toISODate } from './dates';
 import { db } from './db';
 import { cmp, sortProjects } from './ordering';
-import type { Appointment, ISODate, ItemPosition, Project, Task } from './types';
+import {
+  expandAppointments,
+  expandTasks,
+  occurrences,
+  oneTimeAppt,
+  oneTimeTask,
+  overdueOccurrence,
+  type ApptOcc,
+  type TaskOcc,
+} from './recur';
+import type { Appointment, ISODate, ItemPosition, OccurrenceException, Project, Task } from './types';
 
 const alive = <T extends { deleted_at: string | null }>(r: T) => !r.deleted_at;
 
@@ -13,24 +23,47 @@ export function useProjects(): Project[] | undefined {
   return useLiveQuery(async () => sortProjects((await db.projects.toArray()).filter(alive)), []);
 }
 
+// ---------------------------------------------------------------------------
+// Tasks and appointments as shown on screen: one-time items plus every
+// occurrence of repeating ones (see recur.ts).
+// ---------------------------------------------------------------------------
+async function exceptionsFor(ids: string[]): Promise<OccurrenceException[]> {
+  if (ids.length === 0) return [];
+  return (await db.occurrence_exceptions.where('item_id').anyOf(ids).toArray()).filter(alive);
+}
+
+export async function loadTaskOccs(from: ISODate, to: ISODate): Promise<TaskOcc[]> {
+  const [oneTime, series] = await Promise.all([
+    db.tasks.where('date').between(from, to, true, true).filter((t) => !t.rrule && !t.deleted_at).toArray(),
+    db.tasks.filter((t) => !!t.rrule && !t.deleted_at).toArray(),
+  ]);
+  const ex = await exceptionsFor(series.map((s) => s.id));
+  return [...oneTime.map(oneTimeTask), ...expandTasks(series, ex, from, to)];
+}
+
+export async function loadApptOccs(from: ISODate, to: ISODate): Promise<ApptOcc[]> {
+  const [oneTime, series] = await Promise.all([
+    db.appointments.where('start_date').belowOrEqual(to).filter((a) => a.end_date >= from && !a.rrule && !a.deleted_at).toArray(),
+    db.appointments.filter((a) => !!a.rrule && !a.deleted_at).toArray(),
+  ]);
+  const ex = await exceptionsFor(series.map((s) => s.id));
+  return [...oneTime.map(oneTimeAppt), ...expandAppointments(series, ex, from, to)];
+}
+
 export interface DayData {
-  tasks: Task[];
-  appointments: Appointment[];
+  tasks: TaskOcc[];
+  appointments: ApptOcc[];
   positions: ItemPosition[];
 }
 
 export function useDay(date: ISODate): DayData | undefined {
   return useLiveQuery(async () => {
     const [tasks, appointments, positions] = await Promise.all([
-      db.tasks.where('date').equals(date).toArray(),
-      db.appointments.where('start_date').belowOrEqual(date).filter((a) => a.end_date >= date).toArray(),
+      loadTaskOccs(date, date),
+      loadApptOccs(date, date),
       db.item_positions.where('[scope+date]').equals(['day', date]).toArray(),
     ]);
-    return {
-      tasks: tasks.filter(alive),
-      appointments: appointments.filter(alive),
-      positions: positions.filter(alive),
-    };
+    return { tasks, appointments, positions: positions.filter(alive) };
   }, [date]);
 }
 
@@ -49,8 +82,11 @@ export function useAppointment(id: string | null): Appointment | null | undefine
 export function recentProjects(projects: Project[], tasks: Task[], today: ISODate): Project[] {
   const cutoff = toISODate(subDays(fromISODate(today), 14));
   const lastUsed = new Map<string, string>();
+  const horizon = toISODate(subDays(fromISODate(today), -400));
   for (const t of tasks) {
-    if (t.deleted_at || t.date < cutoff) continue;
+    if (t.deleted_at) continue;
+    // A repeating task counts if it has an occurrence from the cutoff on.
+    if (t.rrule ? occurrences(t.rrule, t.date, cutoff, horizon).length === 0 : t.date < cutoff) continue;
     const prev = lastUsed.get(t.project_id);
     if (!prev || t.created_at > prev) lastUsed.set(t.project_id, t.created_at);
   }
@@ -61,7 +97,7 @@ export function recentProjects(projects: Project[], tasks: Task[], today: ISODat
 
 export function useRecentTasks(today: ISODate): Task[] | undefined {
   const cutoff = toISODate(subDays(fromISODate(today), 14));
-  return useLiveQuery(() => db.tasks.where('date').aboveOrEqual(cutoff).toArray(), [cutoff]);
+  return useLiveQuery(() => db.tasks.filter((t) => t.date >= cutoff || !!t.rrule).toArray(), [cutoff]);
 }
 
 export function useTaskCounts(): Map<string, number> | undefined {
@@ -75,44 +111,39 @@ export function useTaskCounts(): Map<string, number> | undefined {
 }
 
 export interface WeekData {
-  tasks: Task[];
-  appointments: Appointment[];
+  tasks: TaskOcc[];
+  appointments: ApptOcc[];
   cellPositions: ItemPosition[];
 }
 
 export function useWeek(first: ISODate, last: ISODate): WeekData | undefined {
   return useLiveQuery(async () => {
     const [tasks, appointments, cellPositions] = await Promise.all([
-      db.tasks.where('date').between(first, last, true, true).toArray(),
-      db.appointments.where('start_date').belowOrEqual(last).filter((a) => a.end_date >= first).toArray(),
+      loadTaskOccs(first, last),
+      loadApptOccs(first, last),
       db.item_positions.where('[scope+date]').between(['week_cell', first], ['week_cell', last], true, true).toArray(),
     ]);
-    return {
-      tasks: tasks.filter(alive),
-      appointments: appointments.filter(alive),
-      cellPositions: cellPositions.filter(alive),
-    };
+    return { tasks, appointments, cellPositions: cellPositions.filter(alive) };
   }, [first, last]);
 }
 
-/** One-time tasks dated before today that aren't done (repeating tasks: stage 5). */
-export function useOverdue(today: ISODate): Task[] | undefined {
-  return useLiveQuery(
-    async () =>
-      (await db.tasks.where('date').below(today).filter((t) => !t.done && !t.deleted_at).toArray()).sort(
-        (a, b) => cmp(a.date, b.date) || cmp(a.created_at, b.created_at),
-      ),
-    [today],
-  );
+/**
+ * Overdue tasks: one-time tasks dated before today that aren't done, plus
+ * at most ONE occurrence per repeating task (its most recent missed day).
+ */
+export function useOverdue(today: ISODate): TaskOcc[] | undefined {
+  return useLiveQuery(async () => {
+    const oneTime = await db.tasks.where('date').below(today).filter((t) => !t.done && !t.deleted_at && !t.rrule).toArray();
+    const series = await db.tasks.filter((t) => !!t.rrule && !t.deleted_at && t.date < today).toArray();
+    const ex = await exceptionsFor(series.map((s) => s.id));
+    const repeating = series.map((s) => overdueOccurrence(s, ex, today)).filter((o): o is TaskOcc => !!o);
+    return [...oneTime.map(oneTimeTask), ...repeating].sort(
+      (a, b) => cmp(a.date, b.date) || cmp(a.created_at, b.created_at),
+    );
+  }, [today]);
 }
 
-/** Appointments and special dates that touch any day between first and last. */
-export function useAppointmentsBetween(first: ISODate, last: ISODate): Appointment[] | undefined {
-  return useLiveQuery(
-    async () =>
-      (await db.appointments.where('start_date').belowOrEqual(last).filter((a) => a.end_date >= first).toArray()).filter(
-        alive,
-      ),
-    [first, last],
-  );
+/** Appointments and special dates (including repeats) that touch any day between first and last. */
+export function useAppointmentsBetween(first: ISODate, last: ISODate): ApptOcc[] | undefined {
+  return useLiveQuery(() => loadApptOccs(first, last), [first, last]);
 }

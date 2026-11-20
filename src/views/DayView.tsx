@@ -17,19 +17,20 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
 import { useEditor } from '../components/Editor';
 import { GripIcon } from '../components/Icons';
-import { apptKey, saveDayPositions, setTaskDone, taskKey } from '../lib/data';
+import { saveDayPositions, setOccurrenceDone } from '../lib/data';
 import { shortDate, timeLabel } from '../lib/dates';
 import { holidayKey, holidaysBetween, type Holiday } from '../lib/holidays';
 import { useToday } from '../lib/hooks';
 import { arrangeDay, planMove, type Orderable } from '../lib/ordering';
-import { useDay, useProjects } from '../lib/queries';
+import { useDay, useOverdue, useProjects } from '../lib/queries';
+import type { ApptOcc, TaskOcc } from '../lib/recur';
 import { useSettings } from '../lib/settings';
-import type { Appointment, ISODate, Project, Task } from '../lib/types';
+import type { ISODate, Project } from '../lib/types';
 
 type DayItem = Orderable &
   (
-    | { type: 'task'; task: Task; project?: Project; overdue: boolean }
-    | { type: 'appt'; appt: Appointment }
+    | { type: 'task'; task: TaskOcc; project?: Project; overdue: boolean }
+    | { type: 'appt'; appt: ApptOcc }
     | { type: 'holiday'; holiday: Holiday }
   );
 
@@ -38,12 +39,14 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
   const day = useDay(date);
   const projects = useProjects();
   const settings = useSettings(settingsId);
+  const overdue = useOverdue(today);
   const hideCompleted = settings?.hide_completed ?? false;
   const showHolidays = settings?.show_holidays ?? true;
 
   const { full, saved } = useMemo(() => {
     const saved = new Map((day?.positions ?? []).map((p) => [p.item_key, p.sort_key]));
     const byId = new Map((projects ?? []).map((p) => [p.id, p]));
+    const overdueKeys = new Set((overdue ?? []).map((o) => o.key));
     const items: DayItem[] = [];
     if (showHolidays) {
       for (const holiday of holidaysBetween(date, date)) {
@@ -55,7 +58,7 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
       items.push({
         type: 'appt',
         appt,
-        key: apptKey(appt),
+        key: appt.key,
         group: 'appt',
         rank: [allDayHere ? 0 : 1, allDayHere ? '' : (appt.start_time ?? ''), appt.title.toLowerCase()],
       });
@@ -66,14 +69,14 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
         type: 'task',
         task,
         project,
-        overdue: !task.done && task.date < today,
-        key: taskKey(task),
+        overdue: overdueKeys.has(task.key),
+        key: task.key,
         group: project?.category ?? 'work',
         rank: [project?.sort_key ?? '', task.created_at],
       });
     }
     return { full: arrangeDay(items, saved), saved };
-  }, [day, projects, date, today, showHolidays]);
+  }, [day, projects, date, showHolidays, overdue]);
 
   const visible = hideCompleted ? full.filter((i) => !(i.type === 'task' && i.task.done)) : full;
   const hiddenCount = full.length - visible.length;
@@ -149,13 +152,14 @@ function Row({ item, date }: { item: DayItem; date: ISODate }) {
           className="check"
           checked={task.done}
           aria-label={task.done ? 'Mark not done' : 'Mark done'}
-          onChange={(e) => void setTaskDone(task.id, e.target.checked)}
+          onChange={(e) => void setOccurrenceDone(task, e.target.checked)}
         />
-        <button type="button" className="item-body plain" onClick={() => editor.openTask(task.id, date)}>
+        <button type="button" className="item-body plain" onClick={() => editor.openTask(task.id, date, task.repeating ? task.originalDate : undefined)}>
           <span className="item-title">{task.title}</span>
           <span className="item-meta">
             {item.overdue && <span className="overdue-tag">! Overdue</span>}
             {project?.name ?? 'No project'}
+            {task.repeating && <span title="Repeats"> · ↻</span>}
           </span>
         </button>
         {handle}
@@ -193,12 +197,13 @@ function Row({ item, date }: { item: DayItem; date: ISODate }) {
       style={style}
       className={`item ${special ? 'holiday' : 'appt'} ${isDragging ? 'dragging' : ''}`}
     >
-      <button type="button" className="item-body plain" onClick={() => editor.openAppointment(appt.id, date)}>
+      <button type="button" className="item-body plain" onClick={() => editor.openAppointment(appt.id, date, appt.repeating ? appt.originalDate : undefined)}>
         <span className="item-title">{appt.title}</span>
         <span className="item-meta">
           {when}
           {multiDay && ` · ${shortDate(appt.start_date)} – ${shortDate(appt.end_date)}`}
           {appt.location && ` · ${appt.location}`}
+          {appt.repeating && appt.kind !== 'special_date' && ' · ↻'}
         </span>
       </button>
       {handle}
