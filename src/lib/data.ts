@@ -8,7 +8,7 @@ import { createRow, softDelete, updateRow } from './outbox';
 import { exceptionId, occursOn, withUntil, type ApptOcc, type TaskOcc } from './recur';
 import { addDays } from 'date-fns';
 import { fromISODate, toISODate } from './dates';
-import type { Appointment, Category, ISODate, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
+import type { Appointment, BringItem, Category, ISODate, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
 
 export const newId = (): string => crypto.randomUUID();
 
@@ -336,4 +336,26 @@ export async function deleteNoteCategory(id: string): Promise<void> {
     await updateRow(db, 'notes', n.id, { category_id: null });
   }
   await softDelete(db, 'note_categories', id);
+}
+
+// ---------------------------------------------------------------------------
+// "To bring" lists
+// ---------------------------------------------------------------------------
+export type BringInput = Pick<BringItem, 'name' | 'kind' | 'date' | 'weekdays'>;
+
+export async function createBringItem(input: BringInput): Promise<BringItem> {
+  const keys = (await db.bring_items.toArray()).filter(alive).map((i) => i.sort_key);
+  return createRow(db, 'bring_items', { id: newId(), ...input, name: input.name.trim(), sort_key: keyAfterAll(keys) });
+}
+
+export const updateBringItem = (id: string, patch: Partial<BringInput>) =>
+  updateRow(db, 'bring_items', id, { ...patch, ...(patch.name ? { name: patch.name.trim() } : {}) });
+
+export const deleteBringItem = (id: string) => softDelete(db, 'bring_items', id);
+
+/** Tick / untick an item for one day. */
+export async function setBringCheck(itemId: string, date: ISODate, checked: boolean): Promise<void> {
+  const id = `${itemId}@${date}`;
+  if (await db.bring_checks.get(id)) await updateRow(db, 'bring_checks', id, { checked, deleted_at: null });
+  else await createRow(db, 'bring_checks', { id, item_id: itemId, date, checked });
 }

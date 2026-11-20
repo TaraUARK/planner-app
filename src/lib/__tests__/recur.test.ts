@@ -149,3 +149,12 @@ describe('expanding repeating appointments', () => {
     expect(expandAppointments([bday], [], '2027-05-01', '2027-05-31').map((o) => o.start_date)).toEqual(['2027-05-04']);
   });
 });
+
+describe('every other day', () => {
+  it('repeats on alternate days and round-trips through the editor', () => {
+    const rule = specToRRule(spec({ freq: 'everyother' }), '2026-11-19')!;
+    expect(occurrences(rule, '2026-11-19', '2026-11-19', '2026-11-25')).toEqual(['2026-11-19', '2026-11-21', '2026-11-23', '2026-11-25']);
+    expect(rruleToSpec(rule, '2026-11-19').freq).toBe('everyother');
+    expect(describeSpec(spec({ freq: 'everyother' }), '2026-11-19')).toBe('Every other day');
+  });
+});

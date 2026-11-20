@@ -69,7 +69,8 @@ export function withUntil(rrule: string, until: ISODate | null): string {
 // ---------------------------------------------------------------------------
 // The Repeat editor's settings  <->  RRULE
 // ---------------------------------------------------------------------------
-export type Freq = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+/** 'everyother' = every other day (stored as daily, every 2 days). */
+export type Freq = 'none' | 'daily' | 'everyother' | 'weekly' | 'monthly' | 'yearly';
 export interface RepeatSpec {
   freq: Freq;
   interval: number;
@@ -95,6 +96,10 @@ export function specToRRule(spec: RepeatSpec, start: ISODate): string | null {
   if (spec.freq === 'none') return null;
   const opts: Partial<Options> = { interval: Math.max(1, Math.floor(spec.interval) || 1) };
   if (spec.freq === 'daily') opts.freq = RRule.DAILY;
+  if (spec.freq === 'everyother') {
+    opts.freq = RRule.DAILY;
+    opts.interval = 2;
+  }
   if (spec.freq === 'yearly') opts.freq = RRule.YEARLY;
   if (spec.freq === 'weekly') {
     opts.freq = RRule.WEEKLY;
@@ -122,7 +127,8 @@ export function rruleToSpec(rrule: string | null, start: ISODate): RepeatSpec {
   const asWd = (w: Weekday | number) => (typeof w === 'number' ? new Weekday(w) : w);
   switch (o.freq) {
     case RRule.DAILY:
-      spec.freq = 'daily';
+      spec.freq = spec.interval === 2 ? 'everyother' : 'daily';
+      if (spec.freq === 'everyother') spec.interval = 1;
       break;
     case RRule.WEEKLY:
       spec.freq = 'weekly';
@@ -145,8 +151,14 @@ const ORDINAL = ['', 'first', 'second', 'third', 'fourth', 'fifth'];
 /** Plain-English summary, e.g. "Every 2 weeks on Monday, Wednesday until Dec 31, 2026". */
 export function describeSpec(spec: RepeatSpec, start: ISODate): string {
   if (spec.freq === 'none') return 'Does not repeat';
+  if (spec.freq === 'everyother') {
+    const until = spec.until
+      ? ` until ${fromISODate(spec.until).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+      : '';
+    return `Every other day${until}`;
+  }
   const n = spec.interval;
-  const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[spec.freq];
+  const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[spec.freq as 'daily'];
   let text = n === 1 ? `Every ${unit}` : `Every ${n} ${unit}s`;
   if (spec.freq === 'weekly') text += ` on ${[...spec.weekdays].sort().map((d) => DAY_NAMES[d]).join(', ')}`;
   if (spec.freq === 'monthly') {

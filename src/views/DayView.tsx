@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
+import { BringBar } from '../components/BringBar';
 import { useEditor } from '../components/Editor';
 import { GripIcon } from '../components/Icons';
 import { saveDayPositions, setOccurrenceDone } from '../lib/data';
@@ -96,6 +97,7 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
 
   return (
     <div className="page day">
+      <BringBar key={date} date={date} />
       {visible.length === 0 ? (
         <p className="placeholder">
           {hiddenCount ? 'Everything here is done.' : 'Nothing planned for this day yet.'}

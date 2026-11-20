@@ -5,11 +5,12 @@ import { Modal } from './Modal';
 const FREQS: { value: Freq; label: string }[] = [
   { value: 'none', label: 'Does not repeat' },
   { value: 'daily', label: 'Daily' },
+  { value: 'everyother', label: 'Every other day' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' },
 ];
-const UNIT: Record<Freq, string> = { none: '', daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' };
+const UNIT: Record<Freq, string> = { none: '', daily: 'days', everyother: '', weekly: 'weeks', monthly: 'months', yearly: 'years' };
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -34,6 +35,7 @@ export function RepeatEditor(props: { spec: RepeatSpec; start: ISODate; onChange
 
       {spec.freq !== 'none' && (
         <>
+          {spec.freq !== 'everyother' && (
           <label className="field-inline">
             <span>Every</span>
             <input
@@ -47,6 +49,7 @@ export function RepeatEditor(props: { spec: RepeatSpec; start: ISODate; onChange
             />
             <span>{spec.interval === 1 ? UNIT[spec.freq].replace(/s$/, '') : UNIT[spec.freq]}</span>
           </label>
+          )}
 
           {spec.freq === 'weekly' && (
             <div className="weekday-picker" role="group" aria-label="Repeat on">

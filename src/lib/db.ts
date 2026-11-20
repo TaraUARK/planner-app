@@ -1,6 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type {
   Appointment,
+  BringCheck,
+  BringItem,
   ItemPosition,
   Note,
   NoteCategory,
@@ -38,6 +40,8 @@ export type PlannerDB = Dexie & {
   item_positions: EntityTable<ItemPosition, 'id'>;
   note_categories: EntityTable<NoteCategory, 'id'>;
   notes: EntityTable<Note, 'id'>;
+  bring_items: EntityTable<BringItem, 'id'>;
+  bring_checks: EntityTable<BringCheck, 'id'>;
   settings: EntityTable<Settings, 'id'>;
   outbox: EntityTable<OutboxEntry, 'seq'>;
   meta: EntityTable<MetaEntry, 'key'>;
@@ -58,6 +62,8 @@ export function openDB(name = 'planner'): PlannerDB {
   });
   // v2 (stage 8): note categories.
   db.version(2).stores({ note_categories: 'id, sort_key' });
+  // v3: "To bring" lists.
+  db.version(3).stores({ bring_items: 'id, date', bring_checks: 'id, item_id, date' });
   return db;
 }
 

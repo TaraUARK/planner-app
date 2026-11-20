@@ -125,6 +125,32 @@ create table if not exists public.note_categories (
   deleted_at  timestamptz
 );
 
+-- "To bring" lists.
+create table if not exists public.bring_items (
+  id          text primary key,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name        text not null,
+  kind        text not null check (kind in ('once', 'weekly', 'alternate')),
+  date        date not null,
+  weekdays    smallint[] not null default '{}',
+  sort_key    text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  deleted_at  timestamptz
+);
+
+-- One tick per item per day; id = '<item id>@<date>'.
+create table if not exists public.bring_checks (
+  id          text primary key,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  item_id     text not null,
+  date        date not null,
+  checked     boolean not null default false,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  deleted_at  timestamptz
+);
+
 -- One row per user; id = the user's id.
 create table if not exists public.settings (
   id              text primary key,
@@ -145,7 +171,7 @@ declare
 begin
   foreach t in array array[
     'projects', 'tasks', 'appointments', 'occurrence_exceptions',
-    'item_positions', 'note_categories', 'notes', 'settings'
+    'item_positions', 'note_categories', 'notes', 'bring_items', 'bring_checks', 'settings'
   ]
   loop
     execute format('drop trigger if exists set_updated_at on public.%I', t);

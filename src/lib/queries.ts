@@ -4,6 +4,7 @@ import { subDays } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { fromISODate, toISODate } from './dates';
 import { db } from './db';
+import { bringListFor, type BringRow } from './bring';
 import { cmp, sortProjects } from './ordering';
 import {
   expandAppointments,
@@ -186,4 +187,17 @@ export function notesInCategory(notes: Note[], cat: string): Note[] {
   if (cat === 'all') return notes;
   if (cat === 'none') return notes.filter((n) => !n.category_id);
   return notes.filter((n) => n.category_id === cat);
+}
+
+/** The "To bring" list for a day (see bring.ts). */
+export function useBringList(date: ISODate, today: ISODate): BringRow[] | undefined {
+  return useLiveQuery(async () => {
+    const items = (await db.bring_items.toArray()).filter(alive);
+    const earlierOnce = items.filter((i) => i.kind === 'once' && i.date < today).map((i) => i.id);
+    const [onDay, forCarry] = await Promise.all([
+      db.bring_checks.where('date').equals(date).toArray(),
+      earlierOnce.length ? db.bring_checks.where('item_id').anyOf(earlierOnce).toArray() : Promise.resolve([]),
+    ]);
+    return bringListFor(items, [...onDay, ...forCarry], date, today);
+  }, [date, today]);
 }

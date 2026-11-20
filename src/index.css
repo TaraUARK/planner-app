@@ -888,3 +888,41 @@ div.wk-band { cursor: default; }
 .layout-compact .note-toolbar button { min-width: 0; flex: 1; padding: 0 4px; }
 .form > .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; justify-self: stretch; }
 .form > .segmented button { min-width: 0; padding: 0 6px; }
+
+/* "To bring" bar (Day view) */
+.bring {
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-left: 6px solid #1d9e75;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.bring-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: none;
+  border-radius: var(--radius);
+  padding: 0 10px 0 12px;
+  font-weight: 700;
+  text-align: left;
+}
+.bring-all { color: #1d9e75; font-weight: 800; }
+.bring-chevron { display: inline-flex; color: var(--text-muted); transition: transform 0.15s ease; }
+.bring.open .bring-chevron { transform: rotate(90deg); }
+.bring-body { padding: 0 12px 8px; }
+.bring-list { list-style: none; margin: 0; padding: 0; }
+.bring-list li { display: flex; align-items: center; gap: 6px; min-height: var(--tap); border-top: 1px solid var(--border); }
+.bring-name { flex: 1; min-width: 0; height: auto; padding: 8px 4px; text-align: left; overflow-wrap: anywhere; }
+.bring-list li.done .bring-name { color: var(--done); text-decoration: line-through; }
+.bring-tag { flex: none; font-size: 0.75rem; color: var(--text-muted); background: var(--surface-2); padding: 2px 7px; border-radius: 6px; }
+.bring-tag.carried { background: var(--holiday-bg); color: var(--text); }
+.bring-add { color: var(--accent); padding-left: 4px; }
+.bring-empty { color: var(--accent); padding: 0 2px; margin-bottom: 6px; font-size: 0.95rem; }
+.bring-presets { display: flex; gap: 4px; }
+.bring-presets .plain { color: var(--accent); padding: 0 8px 0 0; }
+.form .bring-kind { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; justify-self: stretch; }
+.form .bring-kind button { min-width: 0; padding: 0 4px; font-size: 0.9rem; }
+.bring .check { accent-color: #1d9e75; }

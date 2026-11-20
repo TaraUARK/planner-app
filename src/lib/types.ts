@@ -73,6 +73,27 @@ export interface Note extends BaseRow {
   sort_key: string;
 }
 
+/**
+ * Something to bring. kind:
+ *   once      — only on `date` (carried over to today if never ticked)
+ *   weekly    — on the chosen `weekdays` (0 = Monday … 6 = Sunday), from `date` on
+ *   alternate — every other day, starting on `date`
+ */
+export interface BringItem extends BaseRow {
+  name: string;
+  kind: 'once' | 'weekly' | 'alternate';
+  date: ISODate;
+  weekdays: number[];
+  sort_key: string;
+}
+
+/** A tick for one item on one day. id = '<item id>@<date>'. */
+export interface BringCheck extends BaseRow {
+  item_id: string;
+  date: ISODate;
+  checked: boolean;
+}
+
 export interface Settings extends BaseRow {
   hide_completed: boolean;
   show_holidays: boolean;
@@ -86,6 +107,8 @@ export interface TableRows {
   item_positions: ItemPosition;
   note_categories: NoteCategory;
   notes: Note;
+  bring_items: BringItem;
+  bring_checks: BringCheck;
   settings: Settings;
 }
 
@@ -100,5 +123,7 @@ export const TABLES: TableName[] = [
   'item_positions',
   'note_categories',
   'notes',
+  'bring_items',
+  'bring_checks',
   'settings',
 ];
