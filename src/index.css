@@ -1,0 +1,311 @@
+/* ==========================================================================
+   Color palette (light + dark). Every item color has:
+     --x       strong color (text, borders, left stripe)
+     --x-bg    soft fill for chips/cards
+   Colors are never the only signal: overdue also shows "!" text, today a ring.
+   ========================================================================== */
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --surface-2: #eceef2;
+  --header: #e9ebef;          /* simple gray headers, no gradients */
+  --border: #d5d9e0;
+  --text: #1a1d23;
+  --text-muted: #5d6573;
+  --accent: #1f5fbf;          /* buttons / active tab */
+
+  --work: #1f5fbf;            /* blue */
+  --work-bg: #e3edfb;
+  --home: #8a5a2b;            /* brown */
+  --home-bg: #f3e8dc;
+  --appt: #c62828;            /* vivid red: high visibility */
+  --appt-bg: #fde8e8;
+  --holiday: #9c7a00;         /* golden yellow (kept clear of the brown) */
+  --holiday-bg: #fff3bf;
+  --overdue: #c2188f;         /* magenta, always paired with "!" */
+  --overdue-bg: #fde3f3;
+  --today: #f1edfb;           /* pale lavender column/cell */
+  --today-ring: #1a1d23;
+  --danger: #c62828;          /* error messages */
+  --ok: #2e8b47;              /* "synced" dot */
+  --done: #8a919c;            /* completed tasks: gray */
+  --done-bg: #eef0f3;
+
+  --radius: 10px;
+  --tap: 44px;                /* minimum touch target */
+  --font-base: 17px;
+  --tabbar-h: 56px;
+  --header-h: 52px;
+
+  /* iPhone notch / Dynamic Island / home-indicator areas */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121418;
+    --surface: #1b1e24;
+    --surface-2: #252932;
+    --header: #22262e;
+    --border: #353a44;
+    --text: #eceef2;
+    --text-muted: #a1a8b5;
+    --accent: #7fb0ff;
+
+    --work: #7fb0ff;
+    --work-bg: #1c2d4a;
+    --home: #d6a574;
+    --home-bg: #3b2a1a;
+    --appt: #ff7070;
+    --appt-bg: #4a1a1a;
+    --holiday: #f2d04b;
+    --holiday-bg: #3d3510;
+    --overdue: #ff6fcf;
+    --overdue-bg: #4a1639;
+    --today: #26223a;
+    --today-ring: #eceef2;
+    --danger: #ff7070;
+    --ok: #5fd17f;
+    --done: #747b87;
+    --done-bg: #23262c;
+  }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--font-base);
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+button {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+button:active { background: var(--surface-2); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { button.primary { color: #0b1220; } }
+button.icon { width: var(--tap); padding: 0; display: inline-grid; place-items: center; }
+button.plain { border: none; background: none; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Draggable items: no iOS copy/select pop-up on press-and-hold. */
+.no-callout { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* ==========================================================================
+   App frame
+   ========================================================================== */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.app-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: calc(var(--header-h) + var(--safe-top));
+  padding: var(--safe-top) 8px 0 12px;
+  background: var(--header);
+  border-bottom: 1px solid var(--border);
+}
+.app-header .title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 650;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+.app-header .brand { font-weight: 700; margin-right: 12px; }
+.period-nav { display: flex; gap: 4px; align-items: center; }
+.period-nav .today-btn { padding: 0 10px; }
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Bottom tab bar (compact) */
+.tabbar {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--header);
+  border-top: 1px solid var(--border);
+}
+.tabbar button {
+  border: none;
+  border-radius: 0;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.tabbar button[aria-current='page'] { color: var(--accent); font-weight: 650; }
+
+/* Top tabs (wide) */
+.toptabs { display: flex; gap: 4px; margin-right: 16px; }
+.toptabs button { border: none; background: none; color: var(--text-muted); }
+.toptabs button[aria-current='page'] { background: var(--surface); color: var(--accent); font-weight: 650; }
+
+/* Wide layout: give the main area some breathing room */
+.layout-wide .app-header { padding-left: 20px; padding-right: 16px; }
+
+/* ==========================================================================
+   Banners, badges
+   ========================================================================== */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--work-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.banner .grow { flex: 1; }
+
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border: none;
+  background: none;
+  padding: 0 6px;
+}
+.layout-compact .sync-badge { padding: 0 2px; }
+.layout-compact .sync-badge span:last-child { display: none; }
+.sync-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--done); }
+.sync-dot.ok { background: var(--ok); }
+.sync-dot.busy { background: var(--accent); }
+.sync-dot.warn { background: var(--holiday); }
+.sync-dot.bad { background: var(--danger); }
+
+/* ==========================================================================
+   Content pages
+   ========================================================================== */
+.page { max-width: 760px; margin: 0 auto; padding: 16px; }
+.page h2 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--text-muted); font-weight: 650; }
+.page h2:first-child { margin-top: 4px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.row:first-child { border-top: none; }
+.row .label { flex: 1; }
+.row .value { color: var(--text-muted); text-align: right; overflow-wrap: anywhere; }
+
+.switch { width: 24px; height: 24px; accent-color: var(--accent); }
+
+.placeholder {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Color swatches (Settings → Colors) */
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border-left: 5px solid currentColor;
+  font-size: 0.95rem;
+}
+.chip span { color: var(--text); }
+.chip.work { color: var(--work); background: var(--work-bg); }
+.chip.home { color: var(--home); background: var(--home-bg); }
+.chip.appt { color: var(--appt); background: var(--appt-bg); border-left-width: 8px; font-weight: 650; }
+.chip.holiday { color: var(--holiday); background: var(--holiday-bg); }
+.chip.overdue { color: var(--overdue); background: var(--overdue-bg); }
+.chip.done { color: var(--done); background: var(--done-bg); }
+.chip.done span { color: var(--done); text-decoration: line-through; }
+.chip.today { color: var(--today-ring); background: var(--today); }
+
+/* Week strip placeholder */
+.weekstrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding: 12px;
+}
+.weekstrip .day {
+  padding: 8px 4px;
+  text-align: center;
+  background: var(--header);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.weekstrip .day.is-today { background: var(--today); box-shadow: inset 0 0 0 2px var(--today-ring); font-weight: 700; }
+
+/* Sign-in */
+.auth {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+}
+.auth form { width: 100%; max-width: 360px; display: grid; gap: 12px; }
+.auth h1 { margin: 0 0 8px; font-size: 1.6rem; }
+.auth label { display: grid; gap: 4px; font-size: 0.9rem; color: var(--text-muted); }
+.auth input {
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 17px; /* 16px+ stops iPhone from zooming in */
+}
+.error { color: var(--danger); font-size: 0.95rem; }
