@@ -86,6 +86,12 @@ async function pull(client: SupabaseClient): Promise<void> {
   }
 }
 
+/** One full round: send this device's changes, then fetch everyone else's. */
+export async function runSync(c: SupabaseClient): Promise<void> {
+  await push(c);
+  await pull(c);
+}
+
 let client: SupabaseClient | null = null;
 let running = false;
 let again = false;
@@ -107,8 +113,7 @@ export async function syncNow(): Promise<void> {
   try {
     do {
       again = false;
-      await push(client);
-      await pull(client);
+      await runSync(client);
       if (afterFirstPull) {
         const fn = afterFirstPull;
         afterFirstPull = null;

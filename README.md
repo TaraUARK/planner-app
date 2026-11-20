@@ -35,4 +35,9 @@ The local `.env` file holds the Supabase URL and **publishable** key (safe to pu
 `supabase/schema.sql` creates every table with Row Level Security (only the signed-in owner can read/write). It is safe to run again after changes.
 
 ## Backups and restoring
-Added in stage 7.
+- **Nightly:** a scheduled job in the **private** GitHub repository `planner-backup` saves all data
+  every night (last 30 days kept, plus the 1st of each month forever). Restoring is done from that
+  repository's **Actions** tab — see its README.
+- **Any time:** **Settings → Download backup** saves a file of everything on this device. To restore
+  from it, upload it into the `planner-backup` repository and use the same Restore workflow.
+- The Supabase **secret key** lives only as a secret in `planner-backup`. It is never in this public repo.

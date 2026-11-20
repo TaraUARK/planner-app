@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { ChevronRightSmall } from '../components/Icons';
 import type { Account } from '../lib/account';
+import { downloadBackup } from '../lib/backup';
 import { db } from '../lib/db';
 import { useLayout, useSyncState, useWindowSize } from '../lib/hooks';
 import { setSetting, useSettings } from '../lib/settings';
@@ -44,6 +45,21 @@ export function SettingsView({ account }: { account: Account }) {
   const size = useWindowSize();
   const layout = useLayout();
   const [persisted, setPersisted] = useState<boolean | null>(null);
+  const [backupMsg, setBackupMsg] = useState<string | null>(null);
+
+  const backup = async () => {
+    setBackupMsg('Preparing…');
+    try {
+      const { name, counts } = await downloadBackup();
+      const items = Object.entries(counts)
+        .filter(([t]) => ['projects', 'tasks', 'appointments', 'notes'].includes(t))
+        .map(([t, n]) => `${n} ${t}`)
+        .join(', ');
+      setBackupMsg(`Saved ${name} (${items}).`);
+    } catch (e) {
+      setBackupMsg((e as Error).name === 'AbortError' ? null : `Couldn't save the backup: ${(e as Error).message}`);
+    }
+  };
 
   useEffect(() => {
     void navigator.storage?.persisted?.().then(setPersisted);
@@ -99,6 +115,18 @@ export function SettingsView({ account }: { account: Account }) {
           <span className="value">Rename, merge, delete</span>
           <ChevronRightSmall />
         </a>
+      </div>
+
+      <h2>Backup</h2>
+      <div className="card">
+        <div className="row">
+          <span className="label">
+            Download a copy of everything in the planner as a file.
+            {account.mode === 'synced' && ' A backup is also made automatically every night.'}
+          </span>
+          <button onClick={() => void backup()}>Download backup</button>
+        </div>
+        {backupMsg && <div className="row muted small">{backupMsg}</div>}
       </div>
 
       <h2>Sync</h2>
