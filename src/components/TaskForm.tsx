@@ -8,7 +8,7 @@ import { Modal } from './Modal';
 import { ProjectPicker, type PickedProject } from './ProjectPicker';
 
 /** Add a task (taskId = null) or open an existing one (the detail window). */
-export function TaskForm(props: { taskId: string | null; date: ISODate; onClose: () => void }) {
+export function TaskForm(props: { taskId: string | null; date: ISODate; projectId?: string; onClose: () => void }) {
   const { taskId, onClose } = props;
   const existing = useTask(taskId);
   const [title, setTitle] = useState('');
@@ -18,6 +18,12 @@ export function TaskForm(props: { taskId: string | null; date: ISODate; onClose:
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(taskId === null);
+
+  // Quick add from a Weekly-view cell: start with that cell's project.
+  useEffect(() => {
+    if (taskId || !props.projectId) return;
+    void db.projects.get(props.projectId).then((p) => p && setProject({ kind: 'existing', project: p }));
+  }, [taskId, props.projectId]);
 
   // Fill the form once when opening an existing task.
   useEffect(() => {

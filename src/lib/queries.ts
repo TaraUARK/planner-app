@@ -73,3 +73,35 @@ export function useTaskCounts(): Map<string, number> | undefined {
     return counts;
   }, []);
 }
+
+export interface WeekData {
+  tasks: Task[];
+  appointments: Appointment[];
+  cellPositions: ItemPosition[];
+}
+
+export function useWeek(first: ISODate, last: ISODate): WeekData | undefined {
+  return useLiveQuery(async () => {
+    const [tasks, appointments, cellPositions] = await Promise.all([
+      db.tasks.where('date').between(first, last, true, true).toArray(),
+      db.appointments.where('start_date').belowOrEqual(last).filter((a) => a.end_date >= first).toArray(),
+      db.item_positions.where('[scope+date]').between(['week_cell', first], ['week_cell', last], true, true).toArray(),
+    ]);
+    return {
+      tasks: tasks.filter(alive),
+      appointments: appointments.filter(alive),
+      cellPositions: cellPositions.filter(alive),
+    };
+  }, [first, last]);
+}
+
+/** One-time tasks dated before today that aren't done (repeating tasks: stage 5). */
+export function useOverdue(today: ISODate): Task[] | undefined {
+  return useLiveQuery(
+    async () =>
+      (await db.tasks.where('date').below(today).filter((t) => !t.done && !t.deleted_at).toArray()).sort(
+        (a, b) => cmp(a.date, b.date) || cmp(a.created_at, b.created_at),
+      ),
+    [today],
+  );
+}

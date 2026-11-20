@@ -9,6 +9,7 @@ import { ProjectsView } from '../views/ProjectsView';
 import { SettingsView } from '../views/SettingsView';
 import { WeekView } from '../views/WeekView';
 import { EditorProvider, useEditor } from './Editor';
+import { HideDoneToggle, OverdueBadge } from './HeaderExtras';
 import { ChevronLeft, ChevronRight, DayIcon, GearIcon, MonthIcon, NotesIcon, WeekIcon } from './Icons';
 import { SyncBadge } from './SyncBadge';
 import { UpdateBanner } from './UpdateBanner';
@@ -88,6 +89,14 @@ function Frame({ account }: { account: Account }) {
     </div>
   );
 
+  const showsTasks = route.view === 'week' || route.view === 'day';
+  const extras = (
+    <>
+      <OverdueBadge />
+      {showsTasks && <HideDoneToggle settingsId={account.settingsId} />}
+    </>
+  );
+
   const settingsButton = (
     <button
       className="icon plain"
@@ -108,6 +117,7 @@ function Frame({ account }: { account: Account }) {
             {tabs}
           </nav>
           <div className="title">{title(route)}</div>
+          {extras}
           {periodNav}
           {addButtons}
           <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />
@@ -117,6 +127,7 @@ function Frame({ account }: { account: Account }) {
         <header className="app-header two-rows">
           <div className="header-row">
             <div className="title">{title(route)}</div>
+            {extras}
             <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />
             {settingsButton}
           </div>
@@ -132,7 +143,7 @@ function Frame({ account }: { account: Account }) {
 
       <main className="app-main">
         {route.view === 'month' && <MonthView date={route.date} />}
-        {route.view === 'week' && <WeekView date={route.date} />}
+        {route.view === 'week' && <WeekView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'day' && <DayView date={route.date} settingsId={account.settingsId} />}
         {route.view === 'notes' && <NotesView />}
         {route.view === 'settings' && <SettingsView account={account} />}

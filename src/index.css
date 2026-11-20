@@ -482,3 +482,190 @@ button.danger { color: var(--danger); border-color: var(--danger); background: n
 .check { width: 26px; height: 26px; flex: none; margin: 0 4px 0 0; accent-color: var(--accent); }
 .drag-handle { color: var(--text-muted); cursor: grab; touch-action: none; }
 .drag-handle:active { cursor: grabbing; }
+
+/* ==========================================================================
+   Stage 3: Weekly grid
+   One scroll area (.app-main) scrolls both ways; the header row sticks to
+   the top and the project column sticks to the left.
+   ========================================================================== */
+.layout-compact { --wk-proj: 92px; --wk-day: 132px; }
+.layout-wide { --wk-proj: 150px; --wk-day: 100px; }
+
+.wk-wrap { position: relative; min-height: 100%; }
+.wk {
+  display: grid;
+  grid-template-columns: var(--wk-proj) repeat(7, minmax(var(--wk-day), 1fr));
+  width: 100%;
+  min-width: calc(var(--wk-proj) + 7 * var(--wk-day));
+  font-size: 0.95rem;
+}
+.wk > * { min-width: 0; }
+
+.wk-corner,
+.wk-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--header);
+  border-bottom: 1px solid var(--border);
+}
+.wk-corner { left: 0; z-index: 5; border-right: 1px solid var(--border); }
+.wk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border-left: 1px solid var(--border);
+}
+.wk-dow { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.wk-dom { font-weight: 700; }
+.wk-head.today { background: var(--today); }
+.wk-head.today .wk-dom {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.8em;
+  height: 1.8em;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--today-ring);
+}
+
+/* Left column: project names (sticky) */
+.wk-proj {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: block;
+  min-height: 0;
+  height: auto;
+  padding: 8px 8px 8px 10px;
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--header);
+  text-align: left;
+  font-weight: 650;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.layout-compact .wk-proj { font-size: 0.8rem; padding: 8px 6px 8px 9px; }
+.wk-proj.work { box-shadow: inset 5px 0 0 var(--work); }
+.wk-proj.home { box-shadow: inset 5px 0 0 var(--home); }
+.wk-proj.ghost { opacity: 0.4; }
+.wk-proj.drop-target { outline: 3px solid var(--accent); outline-offset: -3px; }
+.wk-proj.overlay { position: static; width: var(--wk-proj); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); border-radius: 8px; }
+.wk-band-label { font-weight: 600; color: var(--appt); font-size: 0.8rem; }
+
+/* Appointment band */
+.wk-bandcell { border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg); }
+.wk-bandcell.today { background: var(--today); }
+.wk-band {
+  position: relative;
+  z-index: 1;
+  margin: 3px 3px;
+  min-height: 0;
+  height: auto;
+  padding: 3px 6px;
+  border: none;
+  border-left: 6px solid var(--appt);
+  border-radius: 6px;
+  background: var(--appt-bg);
+  color: var(--appt);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wk-band.holiday { border-left-color: var(--holiday); background: var(--holiday-bg); color: var(--text); font-weight: 600; }
+.wk-band.cont-before { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.wk-band .wk-time { font-weight: 600; }
+
+/* Day cells */
+.wk-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.wk-cell.today { background: var(--today); }
+.wk-cell.drop-ok { box-shadow: inset 0 0 0 3px var(--accent); }
+.wk-cell.drop-no { box-shadow: inset 0 0 0 3px var(--danger); background: var(--surface-2); }
+.wk-add {
+  flex: 1;
+  min-height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+}
+.wk-add:hover { background: var(--surface); }
+.wk-add:hover::after { content: '+'; color: var(--text-muted); }
+
+.wk-task {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 5px 6px;
+  border: none;
+  border-left: 4px solid var(--work);
+  border-radius: 6px;
+  background: var(--work-bg);
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+}
+.wk-task.home { border-left-color: var(--home); background: var(--home-bg); }
+.wk-task.done { border-left-color: var(--done); background: var(--done-bg); color: var(--done); text-decoration: line-through; }
+.wk-task.overdue { box-shadow: inset 0 0 0 2px var(--overdue); }
+.wk-task.ghost { opacity: 0.35; }
+.wk-task.overlay { width: var(--wk-day); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); cursor: grabbing; }
+
+/* Header extras */
+.overdue-badge {
+  min-height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 16px;
+  background: var(--overdue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+@media (prefers-color-scheme: dark) { .overdue-badge { color: #1a0614; } }
+.toggle-on { color: var(--accent); }
+
+/* Overdue list */
+.overdue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.overdue-list .item { align-items: flex-start; padding-top: 8px; padding-bottom: 8px; }
+.overdue-list .check { margin-top: 4px; }
+.overdue-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.overdue-actions input[type='date'] { min-height: 36px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+
+/* Short message at the bottom */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px);
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(92vw, 480px);
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.9rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.layout-wide .toast { bottom: 24px; }

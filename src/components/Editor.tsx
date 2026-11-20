@@ -1,15 +1,23 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useProjects, useTaskCounts } from '../lib/queries';
 import type { ISODate } from '../lib/types';
+import { ProjectDialog } from '../views/ProjectsView';
 import { AppointmentForm } from './AppointmentForm';
+import { OverdueList } from './OverdueList';
 import { TaskForm } from './TaskForm';
 
 type Open =
-  | { kind: 'task'; id: string | null; date: ISODate }
+  | { kind: 'task'; id: string | null; date: ISODate; projectId?: string }
   | { kind: 'appointment'; id: string | null; date: ISODate }
+  | { kind: 'overdue' }
+  | { kind: 'project'; id: string }
   | null;
 
 interface EditorApi {
-  addTask: (date: ISODate) => void;
+  /** projectId: pre-fill the project (quick add from a Weekly-view cell). */
+  addTask: (date: ISODate, projectId?: string) => void;
+  openOverdue: () => void;
+  openProject: (id: string) => void;
   openTask: (id: string, date: ISODate) => void;
   addAppointment: (date: ISODate) => void;
   openAppointment: (id: string, date: ISODate) => void;
@@ -27,7 +35,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => setOpen(null), []);
   const api = useMemo<EditorApi>(
     () => ({
-      addTask: (date) => setOpen({ kind: 'task', id: null, date }),
+      addTask: (date, projectId) => setOpen({ kind: 'task', id: null, date, projectId }),
+      openOverdue: () => setOpen({ kind: 'overdue' }),
+      openProject: (id) => setOpen({ kind: 'project', id }),
       openTask: (id, date) => setOpen({ kind: 'task', id, date }),
       addAppointment: (date) => setOpen({ kind: 'appointment', id: null, date }),
       openAppointment: (id, date) => setOpen({ kind: 'appointment', id, date }),
@@ -37,12 +47,24 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
-      {open?.kind === 'task' && <TaskForm key={open.id ?? 'new'} taskId={open.id} date={open.date} onClose={close} />}
+      {open?.kind === 'task' && (
+        <TaskForm key={open.id ?? 'new'} taskId={open.id} date={open.date} projectId={open.projectId} onClose={close} />
+      )}
+      {open?.kind === 'overdue' && <OverdueList onClose={close} />}
+      {open?.kind === 'project' && <ProjectWindow id={open.id} onClose={close} />}
       {open?.kind === 'appointment' && (
         <AppointmentForm key={open.id ?? 'new'} id={open.id} date={open.date} onClose={close} />
       )}
     </Ctx.Provider>
   );
+}
+
+function ProjectWindow({ id, onClose }: { id: string; onClose: () => void }) {
+  const projects = useProjects();
+  const counts = useTaskCounts();
+  const project = projects?.find((p) => p.id === id);
+  if (!projects || !counts || !project) return null;
+  return <ProjectDialog project={project} projects={projects} taskCount={counts.get(id) ?? 0} onClose={onClose} />;
 }
 
 export function useEditor(): EditorApi {

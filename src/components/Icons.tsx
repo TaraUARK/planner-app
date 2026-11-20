@@ -61,3 +61,14 @@ export const ChevronRightSmall = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
+export const EyeIcon = () => (
+  <svg {...base}>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+export const EyeOffIcon = () => (
+  <svg {...base}>
+    <path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.3 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
+  </svg>
+);

@@ -58,7 +58,7 @@ export function ProjectsView() {
   );
 }
 
-function ProjectDialog(props: {
+export function ProjectDialog(props: {
   project: Project | null;
   projects: Project[];
   taskCount: number;

@@ -16,6 +16,7 @@ const alive = <T extends { deleted_at: string | null }>(r: T | undefined): r is 
 export const taskKey = (t: Pick<Task, 'id' | 'date'>): string => `task:${t.id}@${t.date}`;
 export const apptKey = (a: Pick<Appointment, 'id' | 'start_date'>): string => `appt:${a.id}@${a.start_date}`;
 const dayPositionId = (date: ISODate, key: string) => `day:${date}:${key}`;
+const cellPositionId = (date: ISODate, key: string) => `week_cell:${date}:${key}`;
 
 // ---------------------------------------------------------------------------
 // Projects
@@ -95,8 +96,9 @@ export async function updateTask(id: string, patch: Partial<TaskInput & { done: 
   // Moved to another day: forget its saved spot on the old day, so if it
   // ever comes back it is treated like any newly added item.
   if (patch.date && patch.date !== before.date) {
-    const oldId = dayPositionId(before.date, taskKey(before));
-    if (alive(await db.item_positions.get(oldId))) await softDelete(db, 'item_positions', oldId);
+    for (const oldId of [dayPositionId(before.date, taskKey(before)), cellPositionId(before.date, taskKey(before))]) {
+      if (alive(await db.item_positions.get(oldId))) await softDelete(db, 'item_positions', oldId);
+    }
   }
 }
 
@@ -124,13 +126,19 @@ export const deleteAppointment = (id: string) => softDelete(db, 'appointments', 
 // ---------------------------------------------------------------------------
 // Saved Daily-view order
 // ---------------------------------------------------------------------------
-export async function saveDayPositions(date: ISODate, writes: PositionWrite[]): Promise<void> {
+async function savePositions(scope: 'day' | 'week_cell', date: ISODate, writes: PositionWrite[]): Promise<void> {
   for (const w of writes) {
-    const id = dayPositionId(date, w.key);
+    const id = scope === 'day' ? dayPositionId(date, w.key) : cellPositionId(date, w.key);
     if (await db.item_positions.get(id)) {
       await updateRow(db, 'item_positions', id, { sort_key: w.sort_key, deleted_at: null });
     } else {
-      await createRow(db, 'item_positions', { id, scope: 'day', date, item_key: w.key, sort_key: w.sort_key });
+      await createRow(db, 'item_positions', { id, scope, date, item_key: w.key, sort_key: w.sort_key });
     }
   }
 }
+
+/** Saved order of the Daily view. */
+export const saveDayPositions = (date: ISODate, writes: PositionWrite[]) => savePositions('day', date, writes);
+
+/** Saved order of tasks inside one Weekly-view cell (independent of the Daily order). */
+export const saveCellPositions = (date: ISODate, writes: PositionWrite[]) => savePositions('week_cell', date, writes);
