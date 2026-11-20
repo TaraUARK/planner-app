@@ -15,7 +15,7 @@ import {
   type ApptOcc,
   type TaskOcc,
 } from './recur';
-import type { Appointment, ISODate, ItemPosition, Note, OccurrenceException, Project, Task } from './types';
+import type { Appointment, ISODate, ItemPosition, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
 
 const alive = <T extends { deleted_at: string | null }>(r: T) => !r.deleted_at;
 
@@ -168,4 +168,22 @@ export function searchNotes(notes: Note[], query: string): Note[] {
     const hay = `${n.title}\n${n.body_text}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
+}
+
+/** Note categories, A–Z. */
+export function useNoteCategories(): NoteCategory[] | undefined {
+  return useLiveQuery(
+    async () =>
+      (await db.note_categories.toArray())
+        .filter(alive)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    [],
+  );
+}
+
+/** Which notes a category view shows: 'all', 'none' (no category) or a category id. */
+export function notesInCategory(notes: Note[], cat: string): Note[] {
+  if (cat === 'all') return notes;
+  if (cat === 'none') return notes.filter((n) => !n.category_id);
+  return notes.filter((n) => n.category_id === cat);
 }

@@ -29,7 +29,8 @@ export interface Task extends BaseRow {
 }
 
 export interface Appointment extends BaseRow {
-  kind: 'appointment' | 'special_date';
+  /** low_priority = an appointment shown in a softer color. */
+  kind: 'appointment' | 'special_date' | 'low_priority';
   title: string;
   start_date: ISODate;
   end_date: ISODate;
@@ -58,7 +59,14 @@ export interface ItemPosition extends BaseRow {
   sort_key: string;
 }
 
+export interface NoteCategory extends BaseRow {
+  name: string;
+  sort_key: string;
+}
+
 export interface Note extends BaseRow {
+  /** null = no category */
+  category_id: string | null;
   title: string;
   body_json: unknown;
   body_text: string;
@@ -76,6 +84,7 @@ export interface TableRows {
   appointments: Appointment;
   occurrence_exceptions: OccurrenceException;
   item_positions: ItemPosition;
+  note_categories: NoteCategory;
   notes: Note;
   settings: Settings;
 }
@@ -89,6 +98,7 @@ export const TABLES: TableName[] = [
   'appointments',
   'occurrence_exceptions',
   'item_positions',
+  'note_categories',
   'notes',
   'settings',
 ];

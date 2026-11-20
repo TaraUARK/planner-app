@@ -330,7 +330,7 @@ function BandChip({ item, style, onOpen }: { item: BandItem; style: CSSPropertie
   return (
     <button
       type="button"
-      className={`wk-band ${special ? 'holiday' : 'appt'} ${item.before ? 'cont-before' : ''} ${item.after ? 'cont-after' : ''}`}
+      className={`wk-band ${special ? 'holiday' : a.kind === 'low_priority' ? 'low' : 'appt'} ${item.before ? 'cont-before' : ''} ${item.after ? 'cont-after' : ''}`}
       style={style}
       onClick={onOpen}
       title={a.title}

@@ -147,7 +147,7 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
   const remove = async () => {
     if (!id) return;
     if (repeating) return setAsking('delete');
-    if (!window.confirm(`Delete this ${special ? 'special date' : 'appointment'}?`)) return;
+    if (!window.confirm(`Delete this ${special ? 'special date' : kind === 'low_priority' ? 'low priority event' : 'appointment'}?`)) return;
     await deleteAppointment(id);
     onClose();
   };
@@ -161,7 +161,13 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
 
   return (
     <Modal
-      title={id ? (special ? 'Special date' : repeating ? 'Repeating appointment' : 'Appointment') : 'Add appointment'}
+      title={
+        id
+          ? special
+            ? 'Special date'
+            : `${repeating ? 'Repeating ' : ''}${kind === 'low_priority' ? 'low priority event' : 'appointment'}`.replace(/^./, (c) => c.toUpperCase())
+          : 'Add appointment'
+      }
       onClose={onClose}
       footer={
         <>
@@ -184,14 +190,20 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
           void save();
         }}
       >
-        {!id && (
+        {/* Type. A special date can't be switched to/from the others once saved. */}
+        {(!id || !special) && (
           <div className="segmented" role="group" aria-label="Type">
-            <button type="button" aria-pressed={!special} className={!special ? 'on appt' : ''} onClick={() => setKind('appointment')}>
+            <button type="button" aria-pressed={kind === 'appointment'} className={kind === 'appointment' ? 'on appt' : ''} onClick={() => setKind('appointment')}>
               Appointment
             </button>
-            <button type="button" aria-pressed={special} className={special ? 'on holiday' : ''} onClick={() => setKind('special_date')}>
-              Special date
+            <button type="button" aria-pressed={kind === 'low_priority'} className={kind === 'low_priority' ? 'on low' : ''} onClick={() => setKind('low_priority')}>
+              Low priority
             </button>
+            {!id && (
+              <button type="button" aria-pressed={special} className={special ? 'on holiday' : ''} onClick={() => setKind('special_date')}>
+                Special date
+              </button>
+            )}
           </div>
         )}
 

@@ -3,7 +3,8 @@ import { Placeholder } from '@tiptap/extensions';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { deleteNote, saveNote } from '../lib/data';
+import { deleteNote, saveNote, setNoteCategory } from '../lib/data';
+import type { NoteCategory } from '../lib/types';
 import { useNote } from '../lib/queries';
 import { ChevronLeft } from './Icons';
 
@@ -23,7 +24,14 @@ function stable(v: unknown): string {
  * save automatically. If the same note is changed on the other device
  * while it's open, a notice offers to load that version.
  */
-export function NoteEditor(props: { id: string; onBack?: () => void; onDeleted: () => void }) {
+export function NoteEditor(props: {
+  id: string;
+  categories: NoteCategory[];
+  /** Text of the back button (the category name). */
+  backLabel?: string;
+  onBack?: () => void;
+  onDeleted: () => void;
+}) {
   const note = useNote(props.id);
   const [title, setTitle] = useState<string | null>(null);
   const [remoteChange, setRemoteChange] = useState(false);
@@ -124,10 +132,23 @@ export function NoteEditor(props: { id: string; onBack?: () => void; onDeleted: 
               props.onBack!();
             }}
           >
-            <ChevronLeft /> Notes
+            <ChevronLeft /> {props.backLabel ?? 'Notes'}
           </button>
         )}
         <span className="grow" />
+        <select
+          className="note-cat"
+          aria-label="Category"
+          value={note.category_id ?? ''}
+          onChange={(e) => void setNoteCategory(props.id, e.target.value || null)}
+        >
+          <option value="">No category</option>
+          {props.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         <button className="danger" onClick={() => void remove()}>
           Delete
         </button>
@@ -154,6 +175,7 @@ export function NoteEditor(props: { id: string; onBack?: () => void; onDeleted: 
         </div>
       )}
 
+      <Toolbar editor={editor} />
       <input
         id="note-title"
         className="note-title"
@@ -172,7 +194,6 @@ export function NoteEditor(props: { id: string; onBack?: () => void; onDeleted: 
           }
         }}
       />
-      <Toolbar editor={editor} />
       <EditorContent editor={editor} className="note-editor" />
     </div>
   );
@@ -184,6 +205,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     selector: ({ editor: e }) => ({
       bold: e.isActive('bold'),
       italic: e.isActive('italic'),
+      underline: e.isActive('underline'),
       h1: e.isActive('heading', { level: 1 }),
       h2: e.isActive('heading', { level: 2 }),
       bullets: e.isActive('bulletList'),
@@ -210,6 +232,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     <div className="note-toolbar" role="toolbar" aria-label="Formatting">
       {btn('Bold', s.bold, () => chain().toggleBold().run(), <b>B</b>)}
       {btn('Italic', s.italic, () => chain().toggleItalic().run(), <i>I</i>)}
+      {btn('Underline', s.underline, () => chain().toggleUnderline().run(), <u>U</u>)}
       {btn('Heading', s.h1, () => chain().toggleHeading({ level: 1 }).run(), 'H1')}
       {btn('Subheading', s.h2, () => chain().toggleHeading({ level: 2 }).run(), 'H2')}
       {btn('Bulleted list', s.bullets, () => chain().toggleBulletList().run(), '•')}

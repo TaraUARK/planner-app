@@ -8,7 +8,7 @@ import { createRow, softDelete, updateRow } from './outbox';
 import { exceptionId, occursOn, withUntil, type ApptOcc, type TaskOcc } from './recur';
 import { addDays } from 'date-fns';
 import { fromISODate, toISODate } from './dates';
-import type { Appointment, Category, ISODate, Note, OccurrenceException, Project, Task } from './types';
+import type { Appointment, Category, ISODate, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
 
 export const newId = (): string => crypto.randomUUID();
 
@@ -298,11 +298,12 @@ export async function editTaskOccurrence(series: Task, occ: TaskOcc, input: Task
 // ---------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
-/** A new, empty note at the TOP of the list. */
-export async function createNote(): Promise<Note> {
+/** A new, empty note at the TOP of the list, in the given category (null = none). */
+export async function createNote(categoryId: string | null = null): Promise<Note> {
   const keys = (await db.notes.toArray()).filter(alive).map((n) => n.sort_key).sort();
   return createRow(db, 'notes', {
     id: newId(),
+    category_id: categoryId,
     title: '',
     body_json: null,
     body_text: '',
@@ -316,3 +317,23 @@ export async function saveNote(id: string, patch: Partial<Pick<Note, 'title' | '
 
 export const deleteNote = (id: string) => softDelete(db, 'notes', id);
 export const moveNoteToKey = (id: string, sort_key: string) => updateRow(db, 'notes', id, { sort_key });
+
+export const setNoteCategory = (id: string, categoryId: string | null) =>
+  updateRow(db, 'notes', id, { category_id: categoryId });
+
+// Note categories
+export async function createNoteCategory(name: string): Promise<NoteCategory> {
+  const keys = (await db.note_categories.toArray()).filter(alive).map((c) => c.sort_key);
+  return createRow(db, 'note_categories', { id: newId(), name: name.trim(), sort_key: keyAfterAll(keys) });
+}
+
+export const renameNoteCategory = (id: string, name: string) =>
+  updateRow(db, 'note_categories', id, { name: name.trim() });
+
+/** Delete a category; its notes are kept and become "No category". */
+export async function deleteNoteCategory(id: string): Promise<void> {
+  for (const n of (await db.notes.toArray()).filter((n) => alive(n) && n.category_id === id)) {
+    await updateRow(db, 'notes', n.id, { category_id: null });
+  }
+  await softDelete(db, 'note_categories', id);
+}

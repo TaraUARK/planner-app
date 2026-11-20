@@ -151,6 +151,7 @@ export function SettingsView({ account }: { account: Account }) {
           <span className="chip work"><span>Work task</span></span>
           <span className="chip home"><span>Home task</span></span>
           <span className="chip appt"><span>Appointment</span></span>
+          <span className="chip low"><span>Low priority event</span></span>
           <span className="chip holiday"><span>Holiday / special date</span></span>
           <span className="chip overdue"><b>!</b><span>Overdue task</span></span>
           <span className="chip work done"><span>Completed task</span></span>

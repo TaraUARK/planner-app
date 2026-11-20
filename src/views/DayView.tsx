@@ -195,7 +195,7 @@ function Row({ item, date }: { item: DayItem; date: ISODate }) {
     <li
       ref={setNodeRef}
       style={style}
-      className={`item ${special ? 'holiday' : 'appt'} ${isDragging ? 'dragging' : ''}`}
+      className={`item ${special ? 'holiday' : appt.kind === 'low_priority' ? 'low' : 'appt'} ${isDragging ? 'dragging' : ''}`}
     >
       <button type="button" className="item-body plain" onClick={() => editor.openAppointment(appt.id, date, appt.repeating ? appt.originalDate : undefined)}>
         <span className="item-title">{appt.title}</span>

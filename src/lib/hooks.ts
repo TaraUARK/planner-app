@@ -58,7 +58,9 @@ export type View = 'month' | 'week' | 'day' | 'notes' | 'settings' | 'projects';
 export interface Route {
   view: View;
   date: ISODate;
-  /** Notes: the open note, if any (#/notes/<id>). */
+  /** Notes: the chosen category ('all', 'none' or an id) and the open note:
+   *  #/notes  ·  #/notes/<category>  ·  #/notes/<category>/<note id> */
+  noteCat?: string;
   noteId?: string;
 }
 
@@ -68,19 +70,20 @@ const VIEWS: View[] = ['month', 'week', 'day', 'notes', 'settings', 'projects'];
 let lastDate: ISODate | null = null;
 
 export function parseHash(hash: string): Route {
-  const [, view, date] = hash.replace(/^#/, '').split('/');
+  const [, view, date, extra] = hash.replace(/^#/, '').split('/');
   if (isISODate(date)) lastDate = date;
   const v = VIEWS.includes(view as View) ? (view as View) : 'week';
   return {
     view: v,
     date: isISODate(date) ? date : (lastDate ?? todayISO()),
-    ...(v === 'notes' && date ? { noteId: date } : {}),
+    ...(v === 'notes' && date ? { noteCat: date } : {}),
+    ...(v === 'notes' && date && extra ? { noteId: extra } : {}),
   };
 }
 
 export function routeHash(r: Route): string {
   if (r.view === 'month' || r.view === 'week' || r.view === 'day') return `#/${r.view}/${r.date}`;
-  if (r.view === 'notes' && r.noteId) return `#/notes/${r.noteId}`;
+  if (r.view === 'notes' && r.noteCat) return `#/notes/${r.noteCat}${r.noteId ? `/${r.noteId}` : ''}`;
   return `#/${r.view}`;
 }
 

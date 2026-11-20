@@ -114,6 +114,17 @@ create table if not exists public.notes (
   deleted_at  timestamptz
 );
 
+-- Note categories (stage 8).
+create table if not exists public.note_categories (
+  id          text primary key,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name        text not null,
+  sort_key    text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  deleted_at  timestamptz
+);
+
 -- One row per user; id = the user's id.
 create table if not exists public.settings (
   id              text primary key,
@@ -134,7 +145,7 @@ declare
 begin
   foreach t in array array[
     'projects', 'tasks', 'appointments', 'occurrence_exceptions',
-    'item_positions', 'notes', 'settings'
+    'item_positions', 'note_categories', 'notes', 'settings'
   ]
   loop
     execute format('drop trigger if exists set_updated_at on public.%I', t);
@@ -161,3 +172,14 @@ end;
 $$;
 
 create index if not exists tasks_project_idx on public.tasks (project_id);
+
+-- ---------------------------------------------------------------------------
+-- Stage 8 changes (safe to run on an existing database)
+-- ---------------------------------------------------------------------------
+-- Notes can belong to a category.
+alter table public.notes add column if not exists category_id text;
+
+-- Appointments can be "low priority".
+alter table public.appointments drop constraint if exists appointments_kind_check;
+alter table public.appointments add constraint appointments_kind_check
+  check (kind in ('appointment', 'special_date', 'low_priority'));

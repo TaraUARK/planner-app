@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { searchNotes } from '../queries';
+import { notesInCategory, searchNotes } from '../queries';
 import type { Note } from '../types';
 
 const note = (title: string, body_text: string): Note => ({
-  id: title, title, body_text, body_json: null, sort_key: 'a0', created_at: '', deleted_at: null,
+  id: title, category_id: null, title, body_text, body_json: null, sort_key: 'a0', created_at: '', deleted_at: null,
 });
 
 describe('note search', () => {
@@ -22,5 +22,16 @@ describe('note search', () => {
 
   it('an empty search shows everything', () => {
     expect(searchNotes(notes, '   ')).toHaveLength(3);
+  });
+});
+
+describe('note categories', () => {
+  const a = { ...note('A', ''), category_id: 'home' };
+  const b = { ...note('B', ''), category_id: 'lab' };
+  const c = note('C', ''); // no category
+  it('filters by category, "all", and "no category"', () => {
+    expect(notesInCategory([a, b, c], 'home').map((n) => n.title)).toEqual(['A']);
+    expect(notesInCategory([a, b, c], 'all')).toHaveLength(3);
+    expect(notesInCategory([a, b, c], 'none').map((n) => n.title)).toEqual(['C']);
   });
 });

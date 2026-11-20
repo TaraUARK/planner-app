@@ -3,6 +3,7 @@ import type {
   Appointment,
   ItemPosition,
   Note,
+  NoteCategory,
   OccurrenceException,
   Project,
   Settings,
@@ -35,6 +36,7 @@ export type PlannerDB = Dexie & {
   appointments: EntityTable<Appointment, 'id'>;
   occurrence_exceptions: EntityTable<OccurrenceException, 'id'>;
   item_positions: EntityTable<ItemPosition, 'id'>;
+  note_categories: EntityTable<NoteCategory, 'id'>;
   notes: EntityTable<Note, 'id'>;
   settings: EntityTable<Settings, 'id'>;
   outbox: EntityTable<OutboxEntry, 'seq'>;
@@ -54,6 +56,8 @@ export function openDB(name = 'planner'): PlannerDB {
     outbox: '++seq, &[table+rowId]',
     meta: 'key',
   });
+  // v2 (stage 8): note categories.
+  db.version(2).stores({ note_categories: 'id, sort_key' });
   return db;
 }
 

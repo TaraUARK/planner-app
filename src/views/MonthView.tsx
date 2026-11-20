@@ -92,7 +92,7 @@ function MonthChip({ item, row, compact }: { item: BandItem; row: number; compac
     <div
       className={[
         'mo-chip',
-        special ? 'holiday' : 'appt',
+        special ? 'holiday' : a.kind === 'low_priority' ? 'low' : 'appt',
         holiday && a.holiday.observed && 'observed',
         item.before && 'cont-before',
         item.after && 'cont-after',
