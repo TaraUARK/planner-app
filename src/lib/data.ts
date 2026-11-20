@@ -115,7 +115,8 @@ export const deleteTask = (id: string) => softDelete(db, 'tasks', id);
 export type AppointmentInput = Pick<
   Appointment,
   'kind' | 'title' | 'start_date' | 'end_date' | 'all_day' | 'start_time' | 'end_time' | 'location' | 'notes' | 'rrule'
->;
+> &
+  Partial<Pick<Appointment, 'hide_in_month' | 'count_style' | 'count_from_year'>>;
 
 export async function createAppointment(input: AppointmentInput): Promise<Appointment> {
   return createRow(db, 'appointments', { id: newId(), ...input, title: input.title.trim() });
@@ -358,4 +359,16 @@ export async function setBringCheck(itemId: string, date: ISODate, checked: bool
   const id = `${itemId}@${date}`;
   if (await db.bring_checks.get(id)) await updateRow(db, 'bring_checks', id, { checked, deleted_at: null });
   else await createRow(db, 'bring_checks', { id, item_id: itemId, date, checked });
+}
+
+// ---------------------------------------------------------------------------
+// Day notes
+// ---------------------------------------------------------------------------
+export const dayNoteId = (date: ISODate) => `day:${date}`;
+
+export async function saveDayNote(date: ISODate, body: string): Promise<void> {
+  const id = dayNoteId(date);
+  const cur = await db.day_notes.get(id);
+  if (cur) await updateRow(db, 'day_notes', id, { body, deleted_at: null });
+  else if (body.trim()) await createRow(db, 'day_notes', { id, date, body });
 }

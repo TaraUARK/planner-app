@@ -18,6 +18,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { format } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useEditor } from '../components/Editor';
+import { NoteButton } from '../components/NoteButton';
+import { titleWithYears } from '../lib/specialDates';
 import { moveProjectToKey, moveTaskOccurrence, saveCellPositions } from '../lib/data';
 import { fromISODate, timeLabel } from '../lib/dates';
 import { holidayAsItem, holidaysBetween, isHolidayItem } from '../lib/holidays';
@@ -318,6 +320,7 @@ export function WeekView({ date, settingsId }: { date: ISODate; settingsId: stri
 
 function BandChip({ item, style, onOpen }: { item: BandItem; style: CSSProperties; onOpen: () => void }) {
   const a = item.appt;
+  const editor = useEditor();
   if (isHolidayItem(a)) {
     return (
       <div className={`wk-band holiday ${a.holiday.observed ? 'observed' : ''}`} style={style} title={a.title}>
@@ -327,18 +330,22 @@ function BandChip({ item, style, onOpen }: { item: BandItem; style: CSSPropertie
   }
   const special = a.kind === 'special_date';
   const time = !special && !a.all_day && a.start_date === a.end_date ? timeLabel(a.start_time).replace(':00', '') : '';
+  const label = special ? titleWithYears(a) : a.title;
   return (
     <button
       type="button"
       className={`wk-band ${special ? 'holiday' : a.kind === 'low_priority' ? 'low' : 'appt'} ${item.before ? 'cont-before' : ''} ${item.after ? 'cont-after' : ''}`}
       style={style}
       onClick={onOpen}
-      title={a.title}
+      title={label}
     >
-      {item.before && <span aria-label="continues from last week">‹ </span>}
-      {time && <span className="wk-time">{time} </span>}
-      {a.title}
-      {item.after && <span aria-label="continues next week"> ›</span>}
+      <span className="wk-band-text">
+        {item.before && <span aria-label="continues from last week">‹ </span>}
+        {time && <span className="wk-time">{time} </span>}
+        {label}
+        {item.after && <span aria-label="continues next week"> ›</span>}
+      </span>
+      {a.notes.trim() && <NoteButton label={a.title} onOpen={() => editor.showNote(a.title, a.notes, onOpen)} />}
     </button>
   );
 }
@@ -403,6 +410,7 @@ function Cell(props: {
 
 function TaskChip(props: { task: TaskOcc; project: Project; overdue: boolean; onOpen: () => void }) {
   const { task, project } = props;
+  const editor = useEditor();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.key,
     data: { type: 'task', key: task.key, projectId: project.id, date: task.date } satisfies TaskData,
@@ -428,6 +436,9 @@ function TaskChip(props: { task: TaskOcc; project: Project; overdue: boolean; on
       {props.overdue && <b className="overdue-tag">! </b>}
       {task.title}
       {task.repeating && <span className="repeat-mark" aria-label="repeats"> ↻</span>}
+      {task.notes.trim() && (
+        <NoteButton label={task.title} onOpen={() => editor.showNote(task.title, task.notes, props.onOpen)} />
+      )}
     </button>
   );
 }

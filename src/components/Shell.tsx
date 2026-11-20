@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Account } from '../lib/account';
-import { dayLabel, monthLabel, shiftDate, todayISO, weekLabel } from '../lib/dates';
+import { format } from 'date-fns';
+import { fromISODate, monthLabel, shiftDate, todayISO, weekLabel } from '../lib/dates';
 import { useLayout, useRoute, useToday, type Route, type View } from '../lib/hooks';
 import { DayView } from '../views/DayView';
 import { MonthView } from '../views/MonthView';
@@ -21,14 +22,16 @@ const TABS: { view: View; label: string; icon: () => ReactNode }[] = [
   { view: 'notes', label: 'Notes', icon: NotesIcon },
 ];
 
-function title(r: Route): string {
+function title(r: Route, compact: boolean): string {
   switch (r.view) {
     case 'month':
       return monthLabel(r.date);
     case 'week':
       return weekLabel(r.date);
     case 'day':
-      return dayLabel(r.date);
+      // Short form so the larger title always fits on one line.
+      void compact;
+      return format(fromISODate(r.date), 'EEE, MMM d, yyyy');
     case 'notes':
       return 'Notes';
     case 'settings':
@@ -116,7 +119,7 @@ function Frame({ account }: { account: Account }) {
           <nav className="toptabs" aria-label="Views">
             {tabs}
           </nav>
-          <div className="title">{title(route)}</div>
+          <div className="title">{title(route, false)}</div>
           {extras}
           {periodNav}
           {addButtons}
@@ -126,7 +129,7 @@ function Frame({ account }: { account: Account }) {
       ) : (
         <header className="app-header two-rows">
           <div className="header-row">
-            <div className="title">{title(route)}</div>
+            <div className="title">{title(route, true)}</div>
             {extras}
             <SyncBadge onClick={() => go({ view: 'settings', date: route.date })} />
             {settingsButton}

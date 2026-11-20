@@ -40,6 +40,11 @@ export interface Appointment extends BaseRow {
   location: string;
   notes: string;
   rrule: string | null;
+  /** Regular appointments only: leave out of the Month view. */
+  hide_in_month?: boolean;
+  /** Special dates: count years from this year ("turns 70", "25th anniversary"). */
+  count_style?: 'age' | 'anniversary' | 'years' | null;
+  count_from_year?: number | null;
 }
 
 export interface OccurrenceException extends BaseRow {
@@ -94,6 +99,12 @@ export interface BringCheck extends BaseRow {
   checked: boolean;
 }
 
+/** Free-text notes for one day (Day view). id = 'day:<date>'. */
+export interface DayNote extends BaseRow {
+  date: ISODate;
+  body: string;
+}
+
 export interface Settings extends BaseRow {
   hide_completed: boolean;
   show_holidays: boolean;
@@ -109,6 +120,7 @@ export interface TableRows {
   notes: Note;
   bring_items: BringItem;
   bring_checks: BringCheck;
+  day_notes: DayNote;
   settings: Settings;
 }
 
@@ -125,5 +137,6 @@ export const TABLES: TableName[] = [
   'notes',
   'bring_items',
   'bring_checks',
+  'day_notes',
   'settings',
 ];

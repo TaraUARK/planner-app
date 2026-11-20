@@ -72,3 +72,9 @@ export const EyeOffIcon = () => (
     <path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.3 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
   </svg>
 );
+export const NoteSmallIcon = () => (
+  <svg {...base} width={18} height={18}>
+    <path d="M5 3h10l4 4v14H5z" />
+    <path d="M9 12h6M9 16h4" />
+  </svg>
+);

@@ -3,6 +3,7 @@ import type {
   Appointment,
   BringCheck,
   BringItem,
+  DayNote,
   ItemPosition,
   Note,
   NoteCategory,
@@ -42,6 +43,7 @@ export type PlannerDB = Dexie & {
   notes: EntityTable<Note, 'id'>;
   bring_items: EntityTable<BringItem, 'id'>;
   bring_checks: EntityTable<BringCheck, 'id'>;
+  day_notes: EntityTable<DayNote, 'id'>;
   settings: EntityTable<Settings, 'id'>;
   outbox: EntityTable<OutboxEntry, 'seq'>;
   meta: EntityTable<MetaEntry, 'key'>;
@@ -64,6 +66,8 @@ export function openDB(name = 'planner'): PlannerDB {
   db.version(2).stores({ note_categories: 'id, sort_key' });
   // v3: "To bring" lists.
   db.version(3).stores({ bring_items: 'id, date', bring_checks: 'id, item_id, date' });
+  // v4: day notes.
+  db.version(4).stores({ day_notes: 'id, date' });
   return db;
 }
 

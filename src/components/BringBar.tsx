@@ -13,7 +13,7 @@ import { Modal } from './Modal';
  * "To bring" at the top of the Day view. Collapsed to one line by default;
  * tap the title to open the list. Each day keeps its own ticks.
  */
-export function BringBar({ date }: { date: ISODate }) {
+export function BringBar({ date, hideCompleted }: { date: ISODate; hideCompleted: boolean }) {
   const today = useToday();
   const rows = useBringList(date, today);
   const [open, setOpen] = useState(false);
@@ -36,16 +36,14 @@ export function BringBar({ date }: { date: ISODate }) {
     );
   }
 
+  // Once everything is packed it behaves like a completed task: grayed and
+  // crossed out, and hidden when "Hide completed tasks" is on.
   const allPacked = rows.every((r) => r.checked);
+  if (allPacked && hideCompleted) return null;
   return (
-    <section className={`bring ${open ? 'open' : ''}`}>
+    <section className={`bring ${open ? 'open' : ''} ${allPacked ? 'packed' : ''}`}>
       <button className="bring-head" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="bring-title">To bring</span>
-        {allPacked && (
-          <span className="bring-all" aria-label="everything packed" title="Everything packed">
-            ✓
-          </span>
-        )}
+        <span className="bring-title">{allPacked ? <s>To bring</s> : 'To bring'}</span>
         <span className="grow" />
         <span className="bring-chevron" aria-hidden>
           <ChevronRight />

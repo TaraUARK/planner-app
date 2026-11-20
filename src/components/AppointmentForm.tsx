@@ -24,6 +24,7 @@ import {
   type RepeatSpec,
 } from '../lib/recur';
 import type { Appointment, ISODate } from '../lib/types';
+import { titleWithYears } from '../lib/specialDates';
 import { Modal } from './Modal';
 import { RepeatEditor, ScopeChooser } from './RepeatEditor';
 
@@ -53,6 +54,9 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
   const [endTime, setEndTime] = useState('10:00');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
+  const [hideInMonth, setHideInMonth] = useState(false);
+  const [countStyle, setCountStyle] = useState<'' | 'age' | 'anniversary' | 'years'>('');
+  const [fromYear, setFromYear] = useState('');
   const [spec, setSpec] = useState<RepeatSpec>(defaultSpec(props.date));
   const [repeatTouched, setRepeatTouched] = useState(false);
   const [asking, setAsking] = useState<null | 'save' | 'delete'>(null);
@@ -73,6 +77,9 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
       if (o.end_time) setEndTime(o.end_time.slice(0, 5));
       setLocation(o.location);
       setNotes(o.notes);
+      setHideInMonth(!!o.hide_in_month);
+      setCountStyle(o.count_style ?? '');
+      setFromYear(o.count_from_year ? String(o.count_from_year) : '');
       setSpec(rruleToSpec(series.rrule, series.start_date));
       setLoaded(true);
     })();
@@ -94,9 +101,14 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
     if (!title.trim()) return 'Enter a title.';
     if (!isISODate(startDate)) return 'Choose a date.';
     if (special) {
+      const year = Number(fromYear);
+      if (countStyle && (!Number.isInteger(year) || year < 1800 || year > 2200)) return 'Enter the starting year (e.g. 1956).';
       return {
         kind, title, start_date: startDate, end_date: startDate, all_day: true,
         start_time: null, end_time: null, location: '', notes, rrule: rule,
+        hide_in_month: false,
+        count_style: countStyle || null,
+        count_from_year: countStyle ? year : null,
       };
     }
     if (!isISODate(endDate)) return 'Choose an end date.';
@@ -106,6 +118,9 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
       kind, title, start_date: startDate, end_date: endDate, all_day: allDay,
       start_time: allDay ? null : startTime, end_time: allDay ? null : endTime,
       location, notes, rrule: rule,
+      hide_in_month: kind === 'appointment' && hideInMonth,
+      count_style: null,
+      count_from_year: null,
     };
   };
 
@@ -132,6 +147,12 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
       const input = buildInput(series.rrule);
       if (typeof input === 'string') return setError(input);
       await editAppointmentOccurrence(series, occ, input);
+      // "Hide in Month view" and year counting belong to the whole series.
+      await updateAppointment(series.id, {
+        hide_in_month: input.hide_in_month,
+        count_style: input.count_style,
+        count_from_year: input.count_from_year,
+      });
     } else {
       const rule =
         special || repeatTouched
@@ -225,6 +246,45 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </label>
             <p className="muted small">Repeats every year.</p>
+            <label className="field">
+              <span>Count the years</span>
+              <select
+                value={countStyle}
+                onChange={(e) => {
+                  const v = e.target.value as typeof countStyle;
+                  setCountStyle(v);
+                  // Suggest the date's own year if it's in the past (e.g. a birth date).
+                  if (v && !fromYear && Number(startDate.slice(0, 4)) < new Date().getFullYear()) {
+                    setFromYear(startDate.slice(0, 4));
+                  }
+                }}
+              >
+                <option value="">Don't count</option>
+                <option value="age">Age (birthday): “turns 70”</option>
+                <option value="anniversary">Anniversary: “25th anniversary”</option>
+                <option value="years">Years since: “12 years”</option>
+              </select>
+            </label>
+            {countStyle && (
+              <label className="field">
+                <span>{countStyle === 'age' ? 'Year born' : countStyle === 'anniversary' ? 'Year of the wedding / start' : 'Starting year'}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1800}
+                  max={2200}
+                  placeholder="1956"
+                  value={fromYear}
+                  onChange={(e) => setFromYear(e.target.value)}
+                />
+                {Number(fromYear) > 1800 && (
+                  <span className="muted small">
+                    {startDate.slice(0, 4)}:{' '}
+                    {titleWithYears({ title: title || 'This date', count_style: countStyle, count_from_year: Number(fromYear), start_date: startDate })}
+                  </span>
+                )}
+              </label>
+            )}
           </>
         ) : (
           <>
@@ -273,6 +333,12 @@ export function AppointmentForm(props: { id: string | null; date: ISODate; origi
               <span>Location</span>
               <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} />
             </label>
+            {kind === 'appointment' && (
+              <label className="field-inline">
+                <input type="checkbox" className="switch" checked={hideInMonth} onChange={(e) => setHideInMonth(e.target.checked)} />
+                <span>Hide in Month view <span className="muted small">(still shows in Week and Day)</span></span>
+              </label>
+            )}
             <RepeatEditor
               spec={spec}
               start={startDate}

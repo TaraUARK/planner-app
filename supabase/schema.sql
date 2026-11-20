@@ -151,6 +151,17 @@ create table if not exists public.bring_checks (
   deleted_at  timestamptz
 );
 
+-- Notes for a single day (Day view). id = 'day:<date>'.
+create table if not exists public.day_notes (
+  id          text primary key,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  date        date not null,
+  body        text not null default '',
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default clock_timestamp(),
+  deleted_at  timestamptz
+);
+
 -- One row per user; id = the user's id.
 create table if not exists public.settings (
   id              text primary key,
@@ -171,7 +182,7 @@ declare
 begin
   foreach t in array array[
     'projects', 'tasks', 'appointments', 'occurrence_exceptions',
-    'item_positions', 'note_categories', 'notes', 'bring_items', 'bring_checks', 'settings'
+    'item_positions', 'note_categories', 'notes', 'bring_items', 'bring_checks', 'day_notes', 'settings'
   ]
   loop
     execute format('drop trigger if exists set_updated_at on public.%I', t);
@@ -209,3 +220,11 @@ alter table public.notes add column if not exists category_id text;
 alter table public.appointments drop constraint if exists appointments_kind_check;
 alter table public.appointments add constraint appointments_kind_check
   check (kind in ('appointment', 'special_date', 'low_priority'));
+
+-- Appointments can be left out of the Month view; special dates can count years.
+alter table public.appointments add column if not exists hide_in_month boolean not null default false;
+alter table public.appointments add column if not exists count_style text;
+alter table public.appointments add column if not exists count_from_year smallint;
+alter table public.appointments drop constraint if exists appointments_count_style_check;
+alter table public.appointments add constraint appointments_count_style_check
+  check (count_style is null or count_style in ('age', 'anniversary', 'years'));

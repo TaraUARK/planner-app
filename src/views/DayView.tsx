@@ -16,27 +16,30 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo } from 'react';
 import { BringBar } from '../components/BringBar';
+import { DayNotesPanel } from '../components/DayNotesPanel';
 import { useEditor } from '../components/Editor';
 import { GripIcon } from '../components/Icons';
+import { NoteButton } from '../components/NoteButton';
 import { saveDayPositions, setOccurrenceDone } from '../lib/data';
 import { shortDate, timeLabel } from '../lib/dates';
-import { holidayKey, holidaysBetween, type Holiday } from '../lib/holidays';
-import { useToday } from '../lib/hooks';
+import { holidaysBetween } from '../lib/holidays';
+import { useLayout, useToday } from '../lib/hooks';
 import { arrangeDay, planMove, type Orderable } from '../lib/ordering';
 import { useDay, useOverdue, useProjects } from '../lib/queries';
 import type { ApptOcc, TaskOcc } from '../lib/recur';
 import { useSettings } from '../lib/settings';
 import type { ISODate, Project } from '../lib/types';
 
+/** The main list holds tasks and regular appointments. Holidays, special dates
+ *  and low-priority events are shown as cards in the Notes panel instead. */
 type DayItem = Orderable &
-  (
-    | { type: 'task'; task: TaskOcc; project?: Project; overdue: boolean }
-    | { type: 'appt'; appt: ApptOcc }
-    | { type: 'holiday'; holiday: Holiday }
-  );
+  ({ type: 'task'; task: TaskOcc; project?: Project; overdue: boolean } | { type: 'appt'; appt: ApptOcc });
+
+const isSideCard = (a: ApptOcc) => a.kind === 'special_date' || a.kind === 'low_priority';
 
 export function DayView({ date, settingsId }: { date: ISODate; settingsId: string }) {
   const today = useToday();
+  const layout = useLayout();
   const day = useDay(date);
   const projects = useProjects();
   const settings = useSettings(settingsId);
@@ -49,13 +52,9 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
     const byId = new Map((projects ?? []).map((p) => [p.id, p]));
     const overdueKeys = new Set((overdue ?? []).map((o) => o.key));
     const items: DayItem[] = [];
-    if (showHolidays) {
-      for (const holiday of holidaysBetween(date, date)) {
-        items.push({ type: 'holiday', holiday, key: holidayKey(holiday), group: 'appt', rank: [0, '', holiday.name.toLowerCase()] });
-      }
-    }
     for (const appt of day?.appointments ?? []) {
-      const allDayHere = appt.kind === 'special_date' || appt.all_day || appt.start_date !== date;
+      if (isSideCard(appt)) continue;
+      const allDayHere = appt.all_day || appt.start_date !== date;
       items.push({
         type: 'appt',
         appt,
@@ -77,7 +76,18 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
       });
     }
     return { full: arrangeDay(items, saved), saved };
-  }, [day, projects, date, showHolidays, overdue]);
+  }, [day, projects, date, overdue]);
+
+  const holidays = showHolidays ? holidaysBetween(date, date) : [];
+  const sideCards = (day?.appointments ?? [])
+    .filter(isSideCard)
+    .sort(
+      (a, b) =>
+        Number(a.kind !== 'special_date') - Number(b.kind !== 'special_date') ||
+        Number(!a.all_day) - Number(!b.all_day) ||
+        (a.start_time ?? '').localeCompare(b.start_time ?? '') ||
+        a.title.localeCompare(b.title),
+    );
 
   const visible = hideCompleted ? full.filter((i) => !(i.type === 'task' && i.task.done)) : full;
   const hiddenCount = full.length - visible.length;
@@ -95,9 +105,13 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
 
   if (!day || !projects) return null;
 
+  const notesPanel = <DayNotesPanel key={`notes-${date}`} date={date} holidays={holidays} cards={sideCards} />;
+
   return (
-    <div className="page day">
-      <BringBar key={date} date={date} />
+    <div className="page day day-layout">
+      <div className="day-main">
+      <BringBar key={date} date={date} hideCompleted={hideCompleted} />
+      {layout === 'compact' && notesPanel}
       {visible.length === 0 ? (
         <p className="placeholder">
           {hiddenCount ? 'Everything here is done.' : 'Nothing planned for this day yet.'}
@@ -118,6 +132,8 @@ export function DayView({ date, settingsId }: { date: ISODate; settingsId: strin
           {hiddenCount} completed {hiddenCount === 1 ? 'task' : 'tasks'} hidden (Settings → Hide completed tasks)
         </p>
       )}
+      </div>
+      {layout === 'wide' && notesPanel}
     </div>
   );
 }
@@ -164,30 +180,26 @@ function Row({ item, date }: { item: DayItem; date: ISODate }) {
             {task.repeating && <span title="Repeats"> · ↻</span>}
           </span>
         </button>
-        {handle}
-      </li>
-    );
-  }
-
-  if (item.type === 'holiday') {
-    const h = item.holiday;
-    return (
-      <li ref={setNodeRef} style={style} className={`item holiday ${h.observed ? 'observed' : ''} ${isDragging ? 'dragging' : ''}`}>
-        <div className="item-body">
-          <span className="item-title">{h.name}</span>
-          <span className="item-meta">Holiday</span>
-        </div>
+        {task.notes.trim() && (
+          <NoteButton
+            label={task.title}
+            onOpen={() =>
+              editor.showNote(task.title, task.notes, () =>
+                editor.openTask(task.id, date, task.repeating ? task.originalDate : undefined),
+              )
+            }
+          />
+        )}
         {handle}
       </li>
     );
   }
 
   const { appt } = item;
-  const special = appt.kind === 'special_date';
   const multiDay = appt.end_date !== appt.start_date;
+  const openAppt = () => editor.openAppointment(appt.id, date, appt.repeating ? appt.originalDate : undefined);
   let when: string;
-  if (special) when = 'Special date';
-  else if (appt.all_day) when = 'All day';
+  if (appt.all_day) when = 'All day';
   else if (!multiDay) when = `${timeLabel(appt.start_time)} – ${timeLabel(appt.end_time)}`;
   else if (date === appt.start_date) when = `From ${timeLabel(appt.start_time)}`;
   else if (date === appt.end_date) when = `Until ${timeLabel(appt.end_time)}`;
@@ -197,17 +209,18 @@ function Row({ item, date }: { item: DayItem; date: ISODate }) {
     <li
       ref={setNodeRef}
       style={style}
-      className={`item ${special ? 'holiday' : appt.kind === 'low_priority' ? 'low' : 'appt'} ${isDragging ? 'dragging' : ''}`}
+      className={`item appt ${isDragging ? 'dragging' : ''}`}
     >
-      <button type="button" className="item-body plain" onClick={() => editor.openAppointment(appt.id, date, appt.repeating ? appt.originalDate : undefined)}>
+      <button type="button" className="item-body plain" onClick={openAppt}>
         <span className="item-title">{appt.title}</span>
         <span className="item-meta">
           {when}
           {multiDay && ` · ${shortDate(appt.start_date)} – ${shortDate(appt.end_date)}`}
           {appt.location && ` · ${appt.location}`}
-          {appt.repeating && appt.kind !== 'special_date' && ' · ↻'}
+          {appt.repeating && ' · ↻'}
         </span>
       </button>
+      {appt.notes.trim() && <NoteButton label={appt.title} onOpen={() => editor.showNote(appt.title, appt.notes, openAppt)} />}
       {handle}
     </li>
   );

@@ -4,6 +4,7 @@ import { holidayAsItem, holidaysBetween, isHolidayItem } from '../lib/holidays';
 import { useLayout, useRoute, useToday } from '../lib/hooks';
 import { useAppointmentsBetween } from '../lib/queries';
 import { useSettings } from '../lib/settings';
+import { titleWithYears } from '../lib/specialDates';
 import type { ISODate } from '../lib/types';
 import { layoutBand, monthWeeks, type BandItem } from '../lib/week';
 
@@ -29,7 +30,11 @@ export function MonthView({ date, settingsId }: { date: ISODate; settingsId: str
   const maxLanes = layout === 'compact' ? 3 : 4;
 
   const items = useMemo(
-    () => [...(appts ?? []), ...(showHolidays ? holidaysBetween(first, last).map(holidayAsItem) : [])],
+    () => [
+      // Appointments marked "Hide in Month view" are left out here (they still show in Week and Day).
+      ...(appts ?? []).filter((a) => !(a.kind === 'appointment' && a.hide_in_month)),
+      ...(showHolidays ? holidaysBetween(first, last).map(holidayAsItem) : []),
+    ],
     [appts, showHolidays, first, last],
   );
 
@@ -103,7 +108,7 @@ function MonthChip({ item, row, compact }: { item: BandItem; row: number; compac
       aria-hidden
     >
       {time && <span className="mo-time">{time} </span>}
-      {a.title}
+      {special && !holiday ? titleWithYears(a) : a.title}
     </div>
   );
 }

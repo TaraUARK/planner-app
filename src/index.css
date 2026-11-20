@@ -926,3 +926,92 @@ div.wk-band { cursor: default; }
 .form .bring-kind { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; justify-self: stretch; }
 .form .bring-kind button { min-width: 0; padding: 0 4px; font-size: 0.9rem; }
 .bring .check { accent-color: #1d9e75; }
+
+/* ==========================================================================
+   Day notes, side cards, note icons, packed To-bring, view titles
+   ========================================================================== */
+/* View titles (Month / Week / Day): larger, in a serif face so they stand out. */
+.app-header .title {
+  font-family: ui-serif, 'New York', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layout-wide .app-header .title { font-size: 1.45rem; }
+
+/* Day view on the Mac: list on the left, Notes card on the right, same height. */
+.layout-wide .page.day-layout {
+  max-width: 1240px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.day-main { min-width: 0; }
+.day-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.day-notes-title { margin: 0 0 2px; font-size: 1rem; }
+.side-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.side-cards .item { padding-right: 6px; }
+.day-notes-text {
+  flex: 1 0 auto;
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+/* Phone: Notes is a one-line bar that opens, like To bring. */
+.day-notes.compact { padding: 0; margin-bottom: 14px; border-left: 6px solid var(--holiday); }
+.day-notes.compact .bring-head { min-height: var(--tap); }
+.day-notes-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.day-notes-body { display: grid; gap: 8px; padding: 0 10px 10px; }
+.day-notes.compact .day-notes-text { min-height: 120px; }
+
+/* Note icon on cards */
+.note-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.note-btn:hover, .note-btn:focus-visible { background: var(--surface-2); color: var(--accent); }
+.wk-task .note-btn, .wk-band .note-btn { width: 22px; height: 18px; margin-left: 2px; }
+.wk-task .note-btn svg, .wk-band .note-btn svg { width: 15px; height: 15px; }
+.note-popup { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; font-size: 1.02rem; }
+
+/* To bring: once everything is packed it looks like a completed task. */
+.bring.packed { border-left-color: var(--done); background: var(--done-bg); }
+.bring.packed .bring-title { color: var(--done); }
+.day-notes.open .bring-chevron { transform: rotate(90deg); }
+button.wk-band { display: flex; align-items: center; gap: 2px; }
+.wk-band-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-band .note-btn { flex: none; }

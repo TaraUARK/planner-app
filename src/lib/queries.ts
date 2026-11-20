@@ -16,7 +16,7 @@ import {
   type ApptOcc,
   type TaskOcc,
 } from './recur';
-import type { Appointment, ISODate, ItemPosition, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
+import type { Appointment, DayNote, ISODate, ItemPosition, Note, NoteCategory, OccurrenceException, Project, Task } from './types';
 
 const alive = <T extends { deleted_at: string | null }>(r: T) => !r.deleted_at;
 
@@ -200,4 +200,8 @@ export function useBringList(date: ISODate, today: ISODate): BringRow[] | undefi
     ]);
     return bringListFor(items, [...onDay, ...forCarry], date, today);
   }, [date, today]);
+}
+
+export function useDayNote(date: ISODate): DayNote | null | undefined {
+  return useLiveQuery(async () => (await db.day_notes.get(`day:${date}`)) ?? null, [date]);
 }
